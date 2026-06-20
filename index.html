@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DGM · Price Intelligence Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1B3A57;
+    --red:  #C8102E;
+    --cream:#FAF7F1;
+    --line: #E7E0D2;
+    --muted:#71808E;
+    --green:#0E7544;
+    --r: 14px;
+    --shadow: 0 2px 16px rgba(20,41,61,.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+    background: var(--cream);
+    color: var(--navy);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--navy);
+    padding: 28px 24px 24px;
+    text-align: center;
+  }
+  .logo-wrap {
+    display: inline-flex; align-items: center; gap: 14px; margin-bottom: 10px;
+  }
+  .glyph {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: var(--red); display: grid; place-items: center;
+    color: #fff; font-weight: 800; font-size: 18px;
+    box-shadow: 0 4px 12px rgba(200,16,46,.4);
+  }
+  .wordmark { text-align: left; }
+  .wordmark h1 { color: #fff; font-size: 20px; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; }
+  .wordmark p  { color: rgba(255,255,255,.55); font-size: 12px; font-weight: 500; margin-top: 3px; letter-spacing: .04em; }
+  .header-sub {
+    color: rgba(255,255,255,.5); font-size: 12px; margin-top: 6px;
+  }
+
+  /* ── MAIN ── */
+  main {
+    flex: 1; padding: 32px 20px 48px;
+    max-width: 640px; margin: 0 auto; width: 100%;
+  }
+
+  .section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 14px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* ── APP CARDS ── */
+  .app-grid {
+    display: flex; flex-direction: column; gap: 14px;
+    margin-bottom: 36px;
+  }
+  .app-card {
+    background: #fff; border: 1px solid var(--line);
+    border-radius: var(--r); padding: 20px 22px;
+    text-decoration: none; color: inherit;
+    display: flex; align-items: center; gap: 18px;
+    box-shadow: var(--shadow);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .app-card:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(20,41,61,.14); }
+  .app-card:active { transform: scale(.98); }
+
+  .app-icon {
+    width: 52px; height: 52px; border-radius: 13px;
+    display: grid; place-items: center;
+    font-size: 24px; flex-shrink: 0;
+  }
+  .app-icon.red   { background: rgba(200,16,46,.10); }
+  .app-icon.navy  { background: rgba(27,58,87,.10); }
+  .app-icon.green { background: rgba(14,117,68,.10); }
+
+  .app-info { flex: 1; min-width: 0; }
+  .app-name { font-size: 15px; font-weight: 700; color: var(--navy); }
+  .app-desc { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+  .app-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+  .tag {
+    font-size: 10px; font-weight: 600; padding: 2px 8px;
+    border-radius: 6px; background: rgba(27,58,87,.08); color: var(--navy);
+  }
+  .tag.red   { background: rgba(200,16,46,.08); color: var(--red); }
+  .tag.green { background: rgba(14,117,68,.08); color: var(--green); }
+
+  .app-arrow { color: var(--muted); font-size: 20px; flex-shrink: 0; }
+
+  /* ── INFO BOX ── */
+  .info-box {
+    background: rgba(27,58,87,.05); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px;
+    font-size: 12.5px; color: var(--navy); line-height: 1.6;
+  }
+  .info-box b { color: var(--navy); }
+  .info-box .row { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px; }
+  .info-box .row:first-child { margin-top: 0; }
+  .info-box .icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; padding: 16px;
+    font-size: 11px; color: var(--muted);
+    border-top: 1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <div class="glyph">PI</div>
+    <div class="wordmark">
+      <h1>DGM · Price Intelligence</h1>
+      <p>Denis G.M. Company Limited · Ayam Brand Vietnam</p>
+    </div>
+  </div>
+  <div class="header-sub">Internal tools — Sales & Trade Marketing Team</div>
+</header>
+
+<main>
+
+  <!-- ── APPS ── -->
+  <div class="section-label">Ứng dụng</div>
+  <div class="app-grid">
+
+    <!-- Survey App -->
+    <a class="app-card" href="survey.html">
+      <div class="app-icon red">📸</div>
+      <div class="app-info">
+        <div class="app-name">DGM Survey</div>
+        <div class="app-desc">Nhập giá thị trường, survey điểm bán, cập nhật giá tăng theo đợt</div>
+        <div class="app-tags">
+          <span class="tag red">Sales Team</span>
+          <span class="tag">MT / GT</span>
+          <span class="tag green">Cập nhật giá tăng</span>
+        </div>
+      </div>
+      <div class="app-arrow">›</div>
+    </a>
+
+    <!-- Manager Dashboard -->
+    <a class="app-card" href="manager.html">
+      <div class="app-icon navy">📊</div>
+      <div class="app-info">
+        <div class="app-name">Price Intelligence Dashboard</div>
+        <div class="app-desc">Radar giá, định vị, chuỗi giá GT, tiến độ tăng giá theo khách hàng</div>
+        <div class="app-tags">
+          <span class="tag">Manager</span>
+          <span class="tag">Radar · Định vị · GT Chain · PI</span>
+        </div>
+      </div>
+      <div class="app-arrow">›</div>
+    </a>
+
+  </div>
+
+  <!-- ── INFO ── -->
+  <div class="section-label">Hướng dẫn nhanh</div>
+  <div class="info-box">
+    <div class="row">
+      <span class="icon">📱</span>
+      <span><b>Sales Representative & Salesman:</b> dùng Survey App để nhập giá NTD tại điểm bán. Sales Leader (Representative) có thêm module <b>Cập nhật giá tăng</b> để nhập giá trước/sau từng đợt tăng.</span>
+    </div>
+    <div class="row">
+      <span class="icon">💰</span>
+      <span><b>Cập nhật giá tăng:</b> vào Survey App → chọn đợt tăng → điền trạng thái từng mã (tăng / không tăng / chưa KD). Mã nào thiếu giá NTD sẽ được highlight cam — bổ sung sau cũng được.</span>
+    </div>
+    <div class="row">
+      <span class="icon">📊</span>
+      <span><b>Manager:</b> dùng Dashboard để xem radar giá, so sánh đối thủ, theo dõi chuỗi giá GT và tiến độ ngấm giá theo từng khách hàng.</span>
+    </div>
+    <div class="row">
+      <span class="icon">📌</span>
+      <span><b>Lưu ý:</b> tất cả giá nhập đều <b>+VAT</b>. Kết nối Google Sheet — cần có Internet để đồng bộ dữ liệu.</span>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  DGM Price Intelligence · Denis G.M. Company Limited · Ayam Brand Vietnam
+  <br>Internal use only · <span id="yr"></span>
+</footer>
+
+<script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>

@@ -1,0 +1,2469 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<title>DGM Survey v14</title>
+<style>
+:root {
+  --red: #C8102E;
+  --yellow: #FFE140;
+  --navy: #1B3A57;
+  --navy-light: #2a4f72;
+  --gray: #6b7280;
+  --gray-light: #f3f4f6;
+  --border: #e5e7eb;
+  --white: #ffffff;
+  --green: #10b981;
+  --orange: #f59e0b;
+  --blue: #3b82f6;
+  --radius: 12px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1f2937; min-height: 100vh; }
+
+/* ── SCREENS ── */
+.screen { display: none; min-height: 100vh; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* ── HEADER ── */
+.app-header {
+  background: var(--navy);
+  color: var(--white);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.app-header .logo { width: 32px; height: 32px; background: var(--red); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.app-header h1 { font-size: 16px; font-weight: 700; }
+.app-header .sub { font-size: 11px; opacity: 0.7; }
+.back-btn { background: rgba(255,255,255,0.15); border: none; color: white; padding: 8px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; margin-right: auto; }
+
+/* ── SELECT SCREEN ── */
+.select-screen { background: var(--navy); }
+.select-screen .inner { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 40px 24px; }
+.select-screen .brand-logo { width: 80px; height: 80px; background: var(--red); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 900; color: white; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(200,16,46,0.4); }
+.select-screen h2 { color: white; font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.select-screen .tagline { color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 40px; }
+.select-title { color: rgba(255,255,255,0.8); font-size: 14px; margin-bottom: 16px; text-align: center; }
+
+/* Loading state */
+.loading-box { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: var(--radius); padding: 20px; text-align: center; color: rgba(255,255,255,0.7); min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 100%; max-width: 400px; }
+.spinner { width: 28px; height: 28px; border: 3px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Staff grid */
+.staff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 400px; }
+.staff-btn {
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.20);
+  border-radius: var(--radius);
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+}
+.staff-btn:active { background: rgba(255,255,255,0.25); transform: scale(0.97); }
+.staff-btn .avatar { width: 44px; height: 44px; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; margin: 0 auto 10px; }
+.staff-btn .name { font-size: 13px; font-weight: 600; }
+.staff-btn .role { font-size: 11px; opacity: 0.6; margin-top: 2px; }
+.error-box { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); border-radius: var(--radius); padding: 16px; color: #fca5a5; text-align: center; font-size: 13px; width: 100%; max-width: 400px; }
+.retry-btn { background: rgba(255,255,255,0.15); border: none; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; margin-top: 10px; }
+
+/* ── HOME SCREEN ── */
+.home-header { background: var(--navy); padding: 20px; padding-top: 12px; }
+.user-info { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.user-avatar { width: 44px; height: 44px; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; color: white; flex-shrink: 0; }
+.user-name { color: white; font-size: 16px; font-weight: 700; }
+.user-role { color: rgba(255,255,255,0.6); font-size: 12px; }
+.stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.stat-card { background: rgba(255,255,255,0.12); border-radius: 10px; padding: 12px 8px; text-align: center; }
+.stat-num { color: white; font-size: 22px; font-weight: 700; }
+.stat-label { color: rgba(255,255,255,0.6); font-size: 11px; margin-top: 2px; }
+
+.home-body { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.action-card {
+  background: white; border-radius: var(--radius); padding: 18px;
+  display: flex; align-items: center; gap: 14px; cursor: pointer;
+  box-shadow: var(--shadow); border: 1px solid var(--border);
+  transition: transform 0.15s;
+}
+.action-card:active { transform: scale(0.98); }
+.action-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.action-icon.red { background: rgba(200,16,46,0.1); }
+.action-icon.blue { background: rgba(59,130,246,0.1); }
+.action-title { font-size: 15px; font-weight: 700; color: var(--navy); }
+.action-sub { font-size: 12px; color: var(--gray); margin-top: 2px; }
+.action-arrow { margin-left: auto; color: var(--gray); font-size: 20px; }
+
+.recent-label { font-size: 13px; font-weight: 600; color: var(--gray); margin-bottom: 8px; }
+.recent-item { background: white; border-radius: 10px; padding: 12px 14px; border: 1px solid var(--border); margin-bottom: 8px; font-size: 13px; }
+.recent-item .ri-top { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.recent-item .ri-name { font-weight: 600; color: var(--navy); }
+.recent-item .ri-date { color: var(--gray); font-size: 12px; }
+.recent-item .ri-sub { color: var(--gray); display: flex; gap: 8px; flex-wrap: wrap; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.badge-mt { background: rgba(59,130,246,0.1); color: var(--blue); }
+.badge-gt { background: rgba(16,185,129,0.1); color: var(--green); }
+.badge-ab { background: rgba(200,16,46,0.1); color: var(--red); }
+.badge-comp { background: rgba(107,114,128,0.1); color: var(--gray); }
+
+.change-user-btn { background: none; border: 1px solid var(--border); color: var(--gray); border-radius: 8px; padding: 8px 14px; font-size: 12px; cursor: pointer; width: 100%; }
+
+/* ── CHANNEL SELECT ── */
+.channel-screen { background: var(--navy); }
+.channel-inner { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 24px; gap: 16px; }
+.channel-card { background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 24px; width: 100%; max-width: 360px; cursor: pointer; text-align: center; color: white; transition: all 0.2s; }
+.channel-card:active { background: rgba(255,255,255,0.2); transform: scale(0.98); }
+.channel-card .ch-icon { font-size: 40px; margin-bottom: 10px; }
+.channel-card .ch-name { font-size: 18px; font-weight: 700; }
+.channel-card .ch-desc { font-size: 13px; opacity: 0.6; margin-top: 4px; }
+
+/* ── FORM ── */
+.form-header { background: var(--navy); padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+.form-header .user-chip { background: rgba(255,255,255,0.15); border-radius: 20px; padding: 6px 12px; color: white; font-size: 13px; font-weight: 600; }
+.form-header .date-chip { background: rgba(255,255,255,0.1); border-radius: 20px; padding: 6px 10px; color: rgba(255,255,255,0.8); font-size: 12px; margin-left: auto; }
+
+.form-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.section-card { background: white; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); }
+.section-title { background: var(--navy); color: white; padding: 10px 16px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.section-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+
+.field-label { font-size: 12px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+.field-label .req { color: var(--red); }
+input, select, textarea {
+  width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; font-size: 14px; color: #1f2937;
+  background: white; outline: none; font-family: inherit;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--navy); }
+input.error, select.error { border-color: var(--red); }
+textarea { resize: vertical; min-height: 70px; }
+select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b7280' d='M1 1l5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+.type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.type-btn { border: 1.5px solid var(--border); background: white; border-radius: 10px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.2s; font-size: 13px; color: var(--gray); }
+.type-btn.active-red { border-color: var(--red); background: rgba(200,16,46,0.06); color: var(--red); font-weight: 700; }
+.type-btn.active-blue { border-color: var(--blue); background: rgba(59,130,246,0.06); color: var(--blue); font-weight: 700; }
+
+.price-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.info-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* NIP */
+.nip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.nip-field { }
+.nip-field .fl { font-size: 11px; font-weight: 600; color: var(--gray); margin-bottom: 4px; }
+.nip-field input { font-size: 13px; }
+
+/* Photo slots */
+.photo-section { display: flex; flex-direction: column; gap: 10px; }
+.photo-slot { background: #f9fafb; border: 1.5px dashed var(--border); border-radius: 10px; overflow: hidden; }
+.photo-slot.captured { border-style: solid; border-color: var(--green); }
+.photo-slot.required.missing { border-color: var(--red); }
+.slot-header { padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+.slot-num { width: 28px; height: 28px; border-radius: 50%; background: var(--navy); color: white; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.slot-name { font-size: 13px; font-weight: 600; color: var(--navy); }
+.slot-desc { font-size: 11px; color: var(--gray); }
+.slot-req { font-size: 11px; color: var(--red); font-weight: 600; margin-left: auto; }
+.slot-opt { font-size: 11px; color: var(--gray); margin-left: auto; }
+.slot-body { padding: 0 14px 12px; }
+.photo-preview { width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; display: none; }
+.photo-actions { display: flex; gap: 8px; }
+.photo-btn { flex: 1; border: 1.5px solid var(--border); background: white; border-radius: 8px; padding: 9px; font-size: 13px; cursor: pointer; text-align: center; color: var(--navy); transition: all 0.15s; }
+.photo-btn.captured-btn { border-color: var(--green); color: var(--green); }
+.photo-btn:active { opacity: 0.8; }
+input[type=file] { display: none; }
+.progress-bar-wrap { height: 4px; background: var(--gray-light); border-radius: 4px; overflow: hidden; }
+.progress-bar { height: 100%; background: var(--green); border-radius: 4px; transition: width 0.3s; }
+.progress-label { font-size: 12px; color: var(--gray); margin-top: 6px; }
+
+.extra-photos { }
+.extra-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.extra-thumb { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; }
+.add-extra-btn { border: 1.5px dashed var(--border); background: #f9fafb; border-radius: 8px; padding: 10px 16px; font-size: 13px; cursor: pointer; color: var(--gray); }
+
+/* NIP hint */
+.nip-hint { background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #3b82f6; }
+.ingredient-hint { background: rgba(107,114,128,0.06); border: 1px solid rgba(107,114,128,0.2); border-radius: 8px; padding: 8px 12px; font-size: 12px; color: var(--gray); }
+
+/* Submit btn */
+.submit-btn { background: var(--red); color: white; border: none; border-radius: var(--radius); padding: 16px; font-size: 16px; font-weight: 700; width: 100%; cursor: pointer; transition: opacity 0.2s; }
+.submit-btn:active { opacity: 0.85; }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── SUCCESS ── */
+.success-screen { background: var(--navy); align-items: center; justify-content: center; flex-direction: column; gap: 20px; padding: 40px; text-align: center; }
+.success-icon { width: 80px; height: 80px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 36px; animation: pop 0.4s ease; }
+@keyframes pop { 0% { transform: scale(0); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+.success-title { color: white; font-size: 24px; font-weight: 700; }
+.success-id { color: rgba(255,255,255,0.5); font-size: 13px; }
+.success-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; }
+.success-btn { border-radius: var(--radius); padding: 14px; font-size: 15px; font-weight: 600; border: none; cursor: pointer; }
+.success-btn.primary { background: var(--red); color: white; }
+.success-btn.secondary { background: rgba(255,255,255,0.12); color: white; }
+
+/* ── TOAST ── */
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1f2937; color: white; padding: 12px 20px; border-radius: 10px; font-size: 14px; opacity: 0; transition: all 0.3s; z-index: 1000; white-space: nowrap; pointer-events: none; max-width: 90vw; text-align: center; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.error { background: var(--red); }
+.toast.success { background: var(--green); }
+
+/* Uploading overlay */
+.uploading-overlay { position: fixed; inset: 0; background: rgba(27,58,87,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 500; gap: 16px; }
+.uploading-overlay.hidden { display: none; }
+.uploading-spinner { width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.uploading-text { color: white; font-size: 16px; font-weight: 600; }
+.uploading-sub { color: rgba(255,255,255,0.6); font-size: 13px; }
+
+/* ── HISTORY ── */
+.history-header { background: var(--navy); padding: 12px 16px; }
+.filter-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; }
+.filter-tab { flex-shrink: 0; background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.7); border-radius: 20px; padding: 6px 14px; font-size: 12px; cursor: pointer; }
+.filter-tab.active { background: var(--red); color: white; font-weight: 600; }
+.history-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.history-card { background: white; border-radius: 10px; padding: 14px; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.hc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+.hc-name { font-size: 14px; font-weight: 700; color: var(--navy); }
+.hc-price { font-size: 16px; font-weight: 700; color: var(--red); }
+.hc-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.hc-outlet { font-size: 12px; color: var(--gray); margin-top: 4px; }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav { background: white; border-top: 1px solid var(--border); display: flex; padding-bottom: env(safe-area-inset-bottom); position: sticky; bottom: 0; z-index: 50; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 8px 8px; cursor: pointer; border: none; background: none; color: var(--gray); font-size: 10px; gap: 4px; }
+.nav-item.active { color: var(--red); }
+.nav-icon { font-size: 22px; }
+.nav-badge { background: var(--red); color: white; border-radius: 10px; min-width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; position: absolute; top: 6px; }
+.nav-item-wrap { position: relative; }
+
+/* Backdated warning */
+.backdate-warn { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #92400e; display: none; }
+.backdate-warn.show { display: block; }
+
+/* Product info chip */
+.product-info-chip { background: rgba(27,58,87,0.06); border-radius: 8px; padding: 8px 12px; font-size: 12px; color: var(--navy); display: none; }
+.product-info-chip.show { display: block; }
+
+/* ── OWN BRAND BULK CARDS ── */
+.own-product-card {
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  transition: border-color 0.2s;
+}
+.own-product-card.has-data { border-color: var(--green); }
+.own-product-card.is-inactive { border-color: #d1d5db; opacity: 0.7; }
+.opc-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: #f9fafb; cursor: pointer;
+}
+.opc-name { font-size: 13px; font-weight: 700; color: var(--navy); flex: 1; }
+.opc-spec { font-size: 11px; color: var(--gray); flex-shrink: 0; }
+.opc-status-badge { font-size: 11px; font-weight: 600; border-radius: 6px; padding: 2px 8px; flex-shrink: 0; }
+.opc-status-badge.green { background: rgba(16,185,129,0.12); color: #065f46; }
+.opc-status-badge.gray  { background: rgba(107,114,128,0.1);  color: var(--gray); }
+.opc-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.opc-price-row { display: grid; grid-template-columns: 1fr 1fr 80px; gap: 8px; align-items: end; }
+.opc-status-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.opc-status-btn {
+  flex: 1; min-width: 0; border: 1.5px solid var(--border); background: white;
+  border-radius: 8px; padding: 7px 4px; font-size: 11px; font-weight: 600;
+  cursor: pointer; text-align: center; color: var(--gray); transition: all 0.15s;
+}
+.opc-status-btn:active { opacity: 0.75; }
+.opc-status-btn.active-orange { border-color: var(--orange); background: rgba(245,158,11,0.08); color: #92400e; }
+.opc-status-btn.active-red    { border-color: var(--red);    background: rgba(200,16,46,0.07);  color: var(--red); }
+.opc-status-btn.active-gray   { border-color: #9ca3af;       background: rgba(107,114,128,0.08); color: #4b5563; }
+.own-brand-summary {
+  background: rgba(27,58,87,0.05); border-radius: 8px; padding: 10px 12px;
+  font-size: 12px; color: var(--navy); display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: 8px;
+}
+.own-brand-summary strong { color: var(--red); }
+
+/* ── PRICE UPDATE MODULE ── */
+.action-icon.green { background: rgba(16,185,129,0.1); }
+
+/* Event selector cards */
+.pu-event-card {
+  background: white; border: 1.5px solid var(--border); border-radius: var(--radius);
+  padding: 16px; cursor: pointer; transition: all 0.15s;
+  box-shadow: var(--shadow);
+}
+.pu-event-card:active { transform: scale(0.98); }
+.pu-event-card.selected { border-color: var(--navy); background: rgba(27,58,87,0.04); }
+.pu-event-name { font-size: 15px; font-weight: 700; color: var(--navy); }
+.pu-event-meta { font-size: 12px; color: var(--gray); margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
+.pu-event-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: rgba(200,16,46,0.1); color: var(--red); }
+
+/* Progress bar header */
+.pu-progress-header {
+  background: var(--navy); padding: 12px 16px;
+  display: flex; align-items: center; gap: 10px;
+}
+.pu-progress-text { color: white; font-size: 13px; font-weight: 600; flex: 1; }
+.pu-progress-count { color: rgba(255,255,255,0.7); font-size: 12px; }
+.pu-prog-bar-wrap { height: 3px; background: rgba(255,255,255,0.2); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+.pu-prog-bar { height: 100%; background: var(--green); border-radius: 3px; transition: width 0.3s; }
+
+/* SKU card for price update */
+.pu-sku-card {
+  background: white; border: 1.5px solid var(--border);
+  border-radius: 10px; overflow: hidden; margin-bottom: 10px;
+  transition: border-color 0.2s;
+}
+.pu-sku-card.done        { border-color: var(--green); }
+.pu-sku-card.no-price    { border-color: #d1d5db; opacity: 0.85; }
+.pu-sku-card.missing-ntd { border-color: var(--orange); }
+
+.pu-sku-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 13px; background: #f9fafb; cursor: pointer;
+}
+.pu-sku-name { font-size: 13px; font-weight: 700; color: var(--navy); flex: 1; min-width: 0; }
+.pu-sku-spec { font-size: 11px; color: var(--gray); white-space: nowrap; flex-shrink: 0; }
+.pu-sku-badge {
+  font-size: 11px; font-weight: 600; border-radius: 6px;
+  padding: 2px 8px; flex-shrink: 0; white-space: nowrap;
+}
+.pu-sku-badge.pending  { background: rgba(107,114,128,0.1); color: var(--gray); }
+.pu-sku-badge.done     { background: rgba(16,185,129,0.12); color: #065f46; }
+.pu-sku-badge.no-kd    { background: rgba(107,114,128,0.1); color: #4b5563; }
+.pu-sku-badge.warn     { background: rgba(245,158,11,0.12); color: #92400e; }
+.pu-sku-badge.dgm-ref  { background: rgba(27,58,87,0.08); color: var(--navy); font-size: 10px; }
+
+.pu-sku-body { padding: 12px 13px; display: flex; flex-direction: column; gap: 10px; }
+
+/* DGM ref price strip */
+.pu-dgm-ref {
+  background: rgba(27,58,87,0.05); border-radius: 8px;
+  padding: 8px 10px; font-size: 12px; color: var(--navy);
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+.pu-dgm-ref span { display: flex; align-items: center; gap: 4px; }
+.pu-dgm-ref strong { color: var(--red); }
+
+/* Status row buttons */
+.pu-status-row { display: flex; gap: 6px; }
+.pu-status-btn {
+  flex: 1; border: 1.5px solid var(--border); background: white;
+  border-radius: 8px; padding: 8px 4px; font-size: 11px; font-weight: 600;
+  cursor: pointer; text-align: center; color: var(--gray); transition: all 0.15s;
+}
+.pu-status-btn:active { opacity: 0.75; }
+.pu-status-btn.sel-tang   { border-color: var(--red);   background: rgba(200,16,46,0.07); color: var(--red); }
+.pu-status-btn.sel-ktang  { border-color: #9ca3af;      background: rgba(107,114,128,0.08); color: #4b5563; }
+.pu-status-btn.sel-ckd    { border-color: #9ca3af;      background: rgba(107,114,128,0.08); color: #4b5563; }
+.pu-status-btn.sel-ngung  { border-color: #9ca3af;      background: rgba(107,114,128,0.08); color: #4b5563; }
+
+/* Price grid */
+.pu-price-grid { display: grid; gap: 8px; }
+.pu-price-grid.gt { grid-template-columns: 1fr 1fr; }
+.pu-price-grid.mt { grid-template-columns: 1fr 1fr; }
+.pu-field-label {
+  font-size: 11px; font-weight: 600; color: var(--gray);
+  text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px;
+}
+.pu-field-label .req { color: var(--red); }
+.pu-input-wrap { display: flex; flex-direction: column; }
+.pu-input-wrap input {
+  width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 9px 10px; font-size: 14px; color: #1f2937;
+  background: white; outline: none; font-family: inherit;
+  transition: border-color 0.2s; -webkit-appearance: none;
+}
+.pu-input-wrap input:focus { border-color: var(--navy); }
+.pu-input-wrap input.missing { border-color: var(--orange); background: rgba(245,158,11,0.04); }
+.pu-date-wrap { display: flex; flex-direction: column; gap: 4px; }
+
+/* Section divider */
+.pu-section-divider {
+  font-size: 11px; font-weight: 700; color: var(--gray);
+  text-transform: uppercase; letter-spacing: .5px;
+  padding: 4px 0 2px; border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+/* Summary bar */
+.pu-summary-bar {
+  background: rgba(27,58,87,0.05); border-radius: 8px;
+  padding: 10px 12px; font-size: 12px; color: var(--navy);
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.pu-summary-bar .counts { display: flex; gap: 12px; }
+.pu-summary-bar .count-item { display: flex; align-items: center; gap: 4px; font-size: 11px; }
+
+/* Missing NTD banner */
+.pu-missing-banner {
+  background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.35);
+  border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #92400e;
+  margin-bottom: 10px;
+}
+
+/* Sticky submit */
+.pu-submit-wrap {
+  padding: 12px 16px; background: white;
+  border-top: 1px solid var(--border);
+  position: sticky; bottom: 0; z-index: 40;
+}
+</style>
+</head>
+<body>
+
+<!-- ── SCREEN 1: SELECT USER ── -->
+<div id="scr-select" class="screen active select-screen">
+  <div class="inner">
+    <div class="brand-logo">D</div>
+    <h2>DGM Survey</h2>
+    <p class="tagline">Price Intelligence · Denis G.M. Co., Ltd.</p>
+    <p class="select-title">Bạn là ai?</p>
+    <div id="staff-container">
+      <div class="loading-box">
+        <div class="spinner"></div>
+        <div>Đang tải danh sách nhân viên...</div>
+        <div style="font-size:11px;opacity:0.6" id="load-status">Đang kết nối API...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN 2: HOME ── -->
+<div id="scr-home" class="screen" style="background:#f8f9fa;">
+  <div class="home-header">
+    <div class="user-info">
+      <div class="user-avatar" id="home-avatar">?</div>
+      <div>
+        <div class="user-name" id="home-name">--</div>
+        <div class="user-role" id="home-role">--</div>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num" id="stat-today">0</div><div class="stat-label">Hôm nay</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-week">0</div><div class="stat-label">Tuần này</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-alert">0</div><div class="stat-label">Cảnh báo</div></div>
+    </div>
+  </div>
+  <div class="home-body">
+    <div class="action-card" onclick="goTo('scr-channel')">
+      <div class="action-icon red">📸</div>
+      <div><div class="action-title">Làm Survey</div><div class="action-sub">Nhập giá thị trường</div></div>
+      <div class="action-arrow">›</div>
+    </div>
+    <div class="action-card" id="action-price-update" onclick="startPriceUpdate()" style="display:none;">
+      <div class="action-icon green">💰</div>
+      <div><div class="action-title">Cập nhật giá tăng</div><div class="action-sub">Nhập giá trước/sau tăng theo đợt</div></div>
+      <div class="action-arrow">›</div>
+    </div>
+    <div class="action-card" onclick="goTo('scr-history')">
+      <div class="action-icon blue">📋</div>
+      <div><div class="action-title">Lịch sử Survey</div><div class="action-sub">Xem các survey đã nhập</div></div>
+      <div class="action-arrow">›</div>
+    </div>
+    <div class="recent-label">Survey gần nhất</div>
+    <div id="home-recent">
+      <div style="color:#9ca3af;font-size:13px;text-align:center;padding:20px;">Chưa có dữ liệu</div>
+    </div>
+    <button class="change-user-btn" onclick="goTo('scr-select'); loadStaff();">🔀 Đổi người dùng</button>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="goTo('scr-home')"><span class="nav-icon">🏠</span>Trang chủ</button>
+    <button class="nav-item" onclick="goTo('scr-channel')"><span class="nav-icon">➕</span>Survey</button>
+    <button class="nav-item" onclick="goTo('scr-history')"><span class="nav-icon">📋</span>Lịch sử</button>
+  </nav>
+</div>
+
+<!-- ── SCREEN 3: CHANNEL ── -->
+<div id="scr-channel" class="screen channel-screen">
+  <div class="app-header">
+    <button class="back-btn" onclick="goTo('scr-home')">← Trang chủ</button>
+    <div><div class="h1" style="color:white;font-size:15px;font-weight:700;">Chọn kênh</div></div>
+  </div>
+  <div class="channel-inner">
+    <div class="channel-card" onclick="startSurvey('MT')">
+      <div class="ch-icon">🏬</div>
+      <div class="ch-name">Modern Trade (MT)</div>
+      <div class="ch-desc">Siêu thị, hypermarket, minimart</div>
+    </div>
+    <div class="channel-card" onclick="startSurvey('GT')">
+      <div class="ch-icon">🛒</div>
+      <div class="ch-name">General Trade (GT)</div>
+      <div class="ch-desc">Chợ, tạp hoá, cửa hàng truyền thống</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN 4: FORM ── -->
+<div id="scr-form" class="screen" style="background:#f8f9fa;">
+  <div class="form-header">
+    <div class="user-chip" id="form-user-chip">--</div>
+    <div class="date-chip" id="form-date-chip">--</div>
+    <button style="background:rgba(255,255,255,0.1);border:none;color:white;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer;" onclick="goTo('scr-channel')">Đổi kênh</button>
+  </div>
+  <div class="form-body">
+
+    <!-- Thông tin chung -->
+    <div class="section-card">
+      <div class="section-title">📍 Thông tin chung</div>
+      <div class="section-body">
+        <div>
+          <div class="field-label">Ngày survey <span class="req">*</span> <span style="font-size:10px;color:#9ca3af;">(có thể nhập lùi)</span></div>
+          <input type="date" id="f-date" onchange="checkBackdate()">
+          <div class="backdate-warn" id="backdate-warn">⏰ Đang nhập lùi ngày — ghi rõ lý do trong phần ghi chú</div>
+        </div>
+        <!-- GT: Chọn khu vực TRƯỚC khi chọn điểm bán -->
+        <div id="gt-region-field" style="display:none;">
+          <div class="field-label">Khu vực GT <span class="req">*</span></div>
+          <select id="f-gt-region" onchange="onGTRegionChange()">
+            <option value="">-- Chọn khu vực --</option>
+            <option value="GT North">🔵 GT North (Hà Nội & miền Bắc)</option>
+            <option value="GT South">🔴 GT South (TP.HCM & miền Nam)</option>
+            <option value="GT Central">🟡 GT Central (Đà Nẵng, Huế & miền Trung)</option>
+          </select>
+        </div>
+
+        <div id="outlet-field">
+          <div class="field-label">Điểm bán <span class="req">*</span></div>
+          <select id="f-outlet" onchange="onOutletChange()">
+            <option value="">-- Chọn điểm bán --</option>
+          </select>
+          <div id="custom-outlet-wrap" style="margin-top:8px;display:none;">
+            <input type="text" id="f-outlet-custom" placeholder="Tên hệ thống / địa điểm (tự nhập)">
+          </div>
+        </div>
+
+        <!-- GT: Loại điểm bán — tự điền theo khu vực, chỉ hiện khi GT -->
+        <div id="gt-type-field" style="display:none;">
+          <div class="field-label">Loại điểm bán GT</div>
+          <select id="f-gt-type">
+            <option value="">-- Chọn loại --</option>
+            <option value="Chợ">🏪 Chợ</option>
+            <option value="Tạp hoá">🛍️ Tạp hoá</option>
+            <option value="Mini-mart">🏬 Mini-mart</option>
+            <option value="GT outlet">📦 GT outlet (tổng hợp)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sản phẩm -->
+    <div class="section-card">
+      <div class="section-title">🏷️ Sản phẩm</div>
+      <div class="section-body">
+        <div class="type-toggle">
+          <div class="type-btn active-red" id="type-own" onclick="setProductType('own')">🔴 Ayam Brand<br><small style="font-weight:400;opacity:0.7;">Sản phẩm DGM</small></div>
+          <div class="type-btn" id="type-comp" onclick="setProductType('comp')">🔵 Đối thủ<br><small style="font-weight:400;opacity:0.7;">Brand khác</small></div>
+        </div>
+
+        <!-- Own brand fields — bulk list mode -->
+        <div id="own-fields">
+          <div id="own-brand-list-wrap">
+            <!-- product cards injected by JS -->
+          </div>
+        </div>
+
+        <!-- Competitor fields -->
+        <div id="comp-fields" style="display:none;">
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <div class="field-label">Tên sản phẩm <span class="req">*</span></div>
+              <input type="text" id="f-comp-name" placeholder="Vd: Đậu sốt, Cá thu, Cháo..." oninput="_onCompNameInput()">
+            </div>
+            <div>
+              <div class="field-label">Hương vị / Loại sốt <span style="font-size:10px;color:#9ca3af;">(ghép vào tên SP khi lưu)</span></div>
+              <input type="text" id="f-comp-flavour" placeholder="Vd: Cà chua, Cà ri, Tương đen, Dầu ô liu..." oninput="_onCompNameInput()">
+            </div>
+            <div>
+              <div class="field-label">Loại sản phẩm</div>
+              <input type="text" id="f-comp-type" placeholder="Vd: Cá hộp, đậu hũ, sốt...">
+            </div>
+            <div>
+              <div class="field-label">Thương hiệu <span class="req">*</span></div>
+              <input type="text" id="f-comp-brand" placeholder="Vd: Cirio, Dongwon, Sailer Wheel...">
+            </div>
+            <div class="info-row">
+              <div>
+                <div class="field-label">Quy cách <span class="req">*</span></div>
+                <input type="number" id="f-comp-qty" placeholder="160">
+              </div>
+              <div>
+                <div class="field-label">Đơn vị</div>
+                <select id="f-comp-unit">
+                  <option value="g">g</option>
+                  <option value="ml">ml</option>
+                  <option value="kg">kg</option>
+                  <option value="L">L</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <div class="field-label">NSX / Nhà phân phối VN</div>
+              <input type="text" id="f-comp-mfg" placeholder="Tên công ty sản xuất">
+            </div>
+            <div>
+              <div class="field-label">Xuất xứ</div>
+              <input type="text" id="f-comp-origin" placeholder="Vd: Thái Lan, Việt Nam, Hàn Quốc">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Giá / NIP / Ảnh — chỉ hiện cho đối thủ; own brand dùng bulk card riêng -->
+    <div id="comp-only-sections">
+    <!-- Giá -->    <div class="section-card">
+      <div class="section-title">💰 Giá survey (đã bao gồm VAT)</div>
+      <div class="section-body">
+        <div>
+          <div class="field-label">Loại giá <span class="req">*</span></div>
+          <select id="f-price-type">
+            <option value="Giá NTD">🧑‍🛒 Giá NTD — giá bán lẻ tại kệ</option>
+            <option value="Giá đại lý">🚛 Giá đại lý</option>
+          </select>
+        </div>
+        <div class="price-row">
+          <div>
+            <div class="field-label">Đơn vị tính giá <span class="req">*</span></div>
+            <select id="f-price-unit">
+              <option value="lon">lon</option>
+              <option value="chai">chai</option>
+              <option value="bịch">bịch</option>
+              <option value="gói">gói</option>
+              <option value="hộp">hộp</option>
+            </select>
+          </div>
+          <div>
+            <div class="field-label">Giá (đồng) <span class="req">*</span></div>
+            <input type="number" id="f-price" placeholder="0" min="0">
+          </div>
+        </div>
+        <div class="info-row">
+          <div>
+            <div class="field-label">Vị trí kệ</div>
+            <input type="text" id="f-shelf" placeholder="Vd: Eye-level, shelf 2">
+          </div>
+          <div>
+            <div class="field-label">Facing</div>
+            <input type="number" id="f-facing" placeholder="Số lon/gói" min="0">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thông tin bổ sung -->
+    <div class="section-card">
+      <div class="section-title">🏷️ Thông tin bổ sung (tuỳ chọn)</div>
+      <div class="section-body">
+        <div class="info-row">
+          <div>
+            <div class="field-label">Hạn sử dụng</div>
+            <input type="text" id="f-exp" placeholder="Vd: 31/12/2026">
+          </div>
+          <div>
+            <div class="field-label">Ngày sản xuất</div>
+            <input type="text" id="f-mfgdate" placeholder="Vd: 01/2025">
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Nhà phân phối tại VN</div>
+          <input type="text" id="f-distrib" placeholder="Tên công ty">
+        </div>
+      </div>
+    </div>
+
+    <!-- NIP -->
+    <div class="section-card" id="nip-section">
+      <div class="section-title">🔬 Thông tin dinh dưỡng (NIP)</div>
+      <div class="section-body">
+        <div class="nip-hint">📌 NĐ 43/2017 & TT 05/2019 — bắt buộc với sản phẩm đối thủ để phân tích</div>
+        <div class="nip-grid">
+          <div class="nip-field"><div class="fl">Năng lượng (kcal) <span style="color:var(--red)">*</span></div><input type="number" id="nip-kcal" placeholder="0"></div>
+          <div class="nip-field"><div class="fl">Protein (g) <span style="color:var(--red)">*</span></div><input type="number" id="nip-protein" placeholder="0"></div>
+          <div class="nip-field"><div class="fl">Chất béo (g) <span style="color:var(--red)">*</span></div><input type="number" id="nip-fat" placeholder="0"></div>
+          <div class="nip-field"><div class="fl">Carbohydrate (g) <span style="color:var(--red)">*</span></div><input type="number" id="nip-carb" placeholder="0"></div>
+          <div class="nip-field"><div class="fl">Đường (g) <span style="color:var(--red)">*</span></div><input type="number" id="nip-sugar" placeholder="0"></div>
+          <div class="nip-field"><div class="fl">Natri (mg) <span style="color:var(--red)">*</span></div><input type="number" id="nip-sodium" placeholder="0"></div>
+        </div>
+        <div style="font-size:12px;color:var(--gray);font-weight:600;margin-top:4px;">Tuỳ chọn:</div>
+        <div class="nip-grid">
+          <div class="nip-field"><div class="fl">Chất béo bão hoà</div><input type="number" id="nip-satfat" placeholder="0"></div>
+          <div class="nip-field"><div class="fl">Chất xơ (g)</div><input type="number" id="nip-fiber" placeholder="0"></div>
+        </div>
+        <div>
+          <div class="field-label">Vitamin & Khoáng chất</div>
+          <input type="text" id="nip-vitamin" placeholder="Vd: Vitamin D 10%, Canxi 15%">
+        </div>
+        <div>
+          <div class="field-label">Thành phần <span style="font-size:10px;color:#9ca3af;">(AI extract từ ảnh slot 2)</span></div>
+          <div class="ingredient-hint">📌 Giữ nguyên định dạng & thứ tự như trên nhãn</div>
+          <textarea id="f-ingredients" placeholder="Cá thu, nước, muối, gia vị..." rows="3" style="margin-top:6px;"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ảnh -->
+    <div class="section-card">
+      <div class="section-title">📸 Ảnh chụp</div>
+      <div class="section-body">
+        <!-- Smart-skip banner — hiện khi sản phẩm đã survey trước đó -->
+        <div id="photo-skip-banner" style="display:none;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+          <div style="font-size:13px;font-weight:700;color:#065f46;">✅ Đã có dữ liệu sản phẩm này</div>
+          <div style="font-size:11px;color:#047857;margin-top:3px;" id="photo-skip-detail"></div>
+          <div style="font-size:11px;color:#6b7280;margin-top:4px;">Ảnh & NIP không bắt buộc — có thể bổ sung nếu muốn cập nhật</div>
+        </div>
+        <div class="nip-hint" id="photo-hint-text">📌 Chụp đủ 4 ảnh bắt buộc để AI extract thông tin</div>
+        <div class="photo-section" id="photo-slots">
+          <!-- slots injected by JS -->
+        </div>
+        <div class="progress-bar-wrap"><div class="progress-bar" id="photo-progress-bar" style="width:0%"></div></div>
+        <div class="progress-label" id="photo-progress-label">Ảnh bắt buộc: 0/4</div>
+
+        <div class="extra-photos">
+          <div class="field-label" style="margin-top:8px;">Ảnh bổ sung (Tuỳ chọn)</div>
+          <div class="extra-grid" id="extra-grid"></div>
+          <button class="add-extra-btn" onclick="document.getElementById('extra-file-input').click()">➕ Thêm ảnh bổ sung</button>
+          <input type="file" id="extra-file-input" accept="image/*" multiple onchange="addExtraPhotos(this)">
+        </div>
+      </div>
+    </div>
+
+    </div><!-- /comp-only-sections -->
+
+    <!-- Ghi chú -->
+    <div class="section-card">
+      <div class="section-title">📝 Ghi chú</div>
+      <div class="section-body">
+        <textarea id="f-note" placeholder="Quan sát, ghi chú thêm..."></textarea>
+      </div>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitForm()">💾 Lưu Survey</button>
+    <div style="height:20px;"></div>
+  </div>
+</div>
+
+<!-- ── SCREEN 5: SUCCESS ── -->
+<div id="scr-success" class="screen success-screen">
+  <div class="success-icon">✅</div>
+  <div class="success-title">Đã lưu!</div>
+  <div style="color:rgba(255,255,255,0.6);font-size:13px;">Dữ liệu đã đồng bộ lên Google Sheets</div>
+  <div class="success-id" id="success-id"></div>
+  <div class="success-actions">
+    <button class="success-btn primary" onclick="newSurvey()">➕ Nhập survey mới</button>
+    <button class="success-btn secondary" onclick="goTo('scr-home')">🏠 Trang chủ</button>
+  </div>
+</div>
+
+<!-- ── SCREEN 6: HISTORY ── -->
+<div id="scr-history" class="screen" style="background:#f8f9fa;">
+  <div class="history-header">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <button class="back-btn" onclick="goTo('scr-home')">← Trang chủ</button>
+      <span style="color:white;font-size:15px;font-weight:700;">Lịch sử Survey</span>
+    </div>
+    <div class="filter-tabs">
+      <button class="filter-tab active" onclick="filterHistory('all',this)">Tất cả</button>
+      <button class="filter-tab" onclick="filterHistory('today',this)">Hôm nay</button>
+      <button class="filter-tab" onclick="filterHistory('MT',this)">MT</button>
+      <button class="filter-tab" onclick="filterHistory('GT',this)">GT</button>
+      <button class="filter-tab" onclick="filterHistory('own',this)">Ayam Brand</button>
+      <button class="filter-tab" onclick="filterHistory('comp',this)">Đối thủ</button>
+      <button class="filter-tab" onclick="filterHistory('changed',this)">⚡ Biến động</button>
+    </div>
+  </div>
+  <div class="history-list" id="history-list">
+    <div style="text-align:center;padding:40px;color:#9ca3af;">Đang tải...</div>
+  </div>
+</div>
+
+<!-- ── UPLOADING OVERLAY ── -->
+<div class="uploading-overlay hidden" id="uploading-overlay">
+  <div class="uploading-spinner"></div>
+  <div class="uploading-text">Đang lưu survey...</div>
+  <div class="uploading-sub" id="uploading-sub">Đang kết nối Google Sheets</div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PRICE UPDATE MODULE — 3 screens
+     scr-pu-events  → chọn đợt tăng giá
+     scr-pu-list    → danh sách SKU nhập giá
+     scr-pu-success → xác nhận đã lưu
+     ════════════════════════════════════════════ -->
+
+<!-- SCREEN PU-1: CHỌN ĐỢT TĂNG GIÁ -->
+<div id="scr-pu-events" class="screen" style="background:#f8f9fa;">
+  <div class="app-header">
+    <button class="back-btn" onclick="goTo('scr-home')">← Trang chủ</button>
+    <div>
+      <div style="color:white;font-size:15px;font-weight:700;">Cập nhật giá tăng</div>
+      <div style="color:rgba(255,255,255,0.6);font-size:11px;" id="pu-events-user-label">--</div>
+    </div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;">
+    <div style="font-size:13px;color:var(--gray);padding:4px 0 8px;">
+      Chọn đợt tăng giá cần cập nhật. Bạn sẽ nhập giá cho khu vực phụ trách của mình.
+    </div>
+    <div id="pu-events-list">
+      <div style="text-align:center;padding:40px;color:#9ca3af;">
+        <div class="spinner" style="margin:0 auto 12px;border-top-color:var(--navy);"></div>
+        Đang tải đợt tăng giá...
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN PU-2: DANH SÁCH SKU -->
+<div id="scr-pu-list" class="screen" style="background:#f8f9fa;">
+  <!-- Header + progress -->
+  <div class="app-header" style="flex-direction:column;align-items:stretch;gap:0;padding-bottom:10px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <button class="back-btn" onclick="goTo('scr-pu-events')">← Đợt khác</button>
+      <div style="flex:1;min-width:0;">
+        <div style="color:white;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="pu-list-event-name">--</div>
+        <div style="color:rgba(255,255,255,0.6);font-size:11px;" id="pu-list-region-label">--</div>
+      </div>
+    </div>
+    <div class="pu-prog-bar-wrap">
+      <div class="pu-prog-bar" id="pu-list-prog-bar" style="width:0%"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:5px;">
+      <span style="color:rgba(255,255,255,0.7);font-size:11px;" id="pu-list-prog-text">0 / 0 SKU đã điền</span>
+      <span style="color:rgba(255,255,255,0.55);font-size:11px;" id="pu-list-warn-count"></span>
+    </div>
+  </div>
+
+  <!-- SKU list body -->
+  <div style="flex:1;overflow-y:auto;padding:12px 12px 80px;" id="pu-sku-body">
+    <div id="pu-missing-banner" class="pu-missing-banner" style="display:none;">
+      ⚠️ <strong>Thiếu giá NTD</strong> — Những mã được highlight cam bên dưới chưa có giá NTD sau tăng. Bạn có thể submit trước, rồi quay lại bổ sung sau.
+    </div>
+    <div id="pu-summary-bar" class="pu-summary-bar" style="display:none;">
+      <div class="counts">
+        <span class="count-item">🔴 <span id="pu-cnt-tang">0</span> tăng giá</span>
+        <span class="count-item">⚪ <span id="pu-cnt-ktang">0</span> không tăng</span>
+        <span class="count-item">🚫 <span id="pu-cnt-ckd">0</span> không KD</span>
+      </div>
+      <strong style="color:var(--red);" id="pu-cnt-done">0 đã điền</strong>
+    </div>
+    <div id="pu-sku-list">
+      <!-- injected by JS -->
+    </div>
+  </div>
+
+  <!-- Sticky submit -->
+  <div class="pu-submit-wrap">
+    <button class="submit-btn" id="pu-submit-btn" onclick="submitPriceUpdate()">
+      💾 Lưu cập nhật giá
+    </button>
+  </div>
+</div>
+
+<!-- SCREEN PU-SUCCESS -->
+<div id="scr-pu-success" class="screen success-screen">
+  <div class="success-icon">✅</div>
+  <div class="success-title">Đã lưu!</div>
+  <div style="color:rgba(255,255,255,0.6);font-size:13px;" id="pu-success-detail">Dữ liệu đã đồng bộ lên Google Sheets</div>
+  <div class="success-id" id="pu-success-id"></div>
+  <div class="success-actions">
+    <button class="success-btn primary" onclick="goTo('scr-pu-events'); puLoadEvents();">📋 Xem đợt khác</button>
+    <button class="success-btn secondary" onclick="goTo('scr-home')">🏠 Trang chủ</button>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════
+// CONFIG — CẬP NHẬT URL API TẠI ĐÂY
+// Lấy URL từ: Apps Script → Deploy → Manage Deployments → URL Web App
+// ════════════════════════════════════════════
+const API = 'PASTE_YOUR_NEW_APPS_SCRIPT_URL_HERE';
+
+// Kiểm tra URL hợp lệ
+if (!API || API === 'PASTE_YOUR_APPS_SCRIPT_URL_HERE' || !API.includes('script.google.com')) {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('staff-container').innerHTML = `
+      <div class="error-box">
+        ⚠️ <strong>Chưa cấu hình URL AppScript</strong><br>
+        <small>Mở file survey.html → tìm dòng <code>const API = ...</code> → thay bằng URL Web App từ Google Apps Script</small>
+        <br><br>
+        <small>Vào Apps Script → Deploy → Manage Deployments → copy URL</small>
+      </div>`;
+  });
+}
+
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+let state = {
+  user:        null,   // { ten_hien_thi, chuc_danh, kenh, ma_nhan_vien }
+  channel:     null,   // 'MT' | 'GT'
+  masterData:  null,   // full getMasterData response
+  mySurveys:   [],
+  allSurveys:  [],
+  photoFiles:  { 1:null, 2:null, 3:null, 4:null }, // required slots
+  extraFiles:  [],
+  productType: 'own',  // 'own' | 'comp'
+  lastSurveyId: null,
+};
+
+const PHOTO_SLOTS = [
+  { num:1, id:'slot1', key:'link_anh_mat_truoc',  name:'Mặt trước',         desc:'Tên SP, thương hiệu, logo', icon:'🏷️',  req:true },
+  { num:2, id:'slot2', key:'link_anh_thanh_phan', name:'Thành phần & NSX',  desc:'Ingredients, nhà máy SX',   icon:'🏭', req:true },
+  { num:3, id:'slot3', key:'link_anh_nip',        name:'Bảng dinh dưỡng',   desc:'NIP đầy đủ',                icon:'🔬', req:true },
+  { num:4, id:'slot4', key:'link_anh_trong_luong',name:'Trọng lượng',       desc:'Net weight, quy cách',       icon:'⚖️', req:true },
+];
+
+// ════════════════════════════════════════════
+// ROUTING
+// ════════════════════════════════════════════
+function goTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  if (screenId === 'scr-history') renderHistory('all');
+  if (screenId === 'scr-home') renderHomeRecent();
+}
+
+// ════════════════════════════════════════════
+// API FETCH — robust with timeout & retry
+// ════════════════════════════════════════════
+async function apiFetch(params, retries = 2) {
+  const url = API + '?' + new URLSearchParams(params).toString();
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 20000);
+      // Google Apps Script: KHÔNG dùng redirect:'follow' hay custom headers
+      // Chỉ simple GET, browser tự follow redirect — CORS mới hoạt động
+      const res = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(timer);
+      const text = await res.text();
+      if (text.trim().startsWith('<')) {
+        throw new Error('API trả về HTML — URL Apps Script có thể đã hết hạn. Cần redeploy và cập nhật URL mới.');
+      }
+      return JSON.parse(text);
+    } catch(e) {
+      if (i === retries) throw e;
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+}
+
+async function apiPost(body) {
+  // Google Apps Script POST: KHÔNG set Content-Type header (sẽ trigger preflight CORS)
+  const res = await fetch(API, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  if (text.trim().startsWith('<')) throw new Error('API returned HTML — cần redeploy AppScript');
+  return JSON.parse(text);
+}
+
+// ════════════════════════════════════════════
+// LOAD MASTER DATA
+// ════════════════════════════════════════════
+async function loadStaff() {
+  const container = document.getElementById('staff-container');
+  const statusEl  = document.getElementById('load-status');
+
+  container.innerHTML = `<div class="loading-box"><div class="spinner"></div><div>Đang tải danh sách nhân viên...</div><div style="font-size:11px;opacity:0.6" id="load-status">Đang kết nối API...</div></div>`;
+
+  try {
+    if (statusEl) statusEl.textContent = 'Đang gọi getMasterData...';
+    const data = await apiFetch({ action: 'getMasterData' });
+
+    // ── KEY FIX: AppScript trả về data.nhan_vien (không phải data.staff)
+    const staffList = data.nhan_vien || data.staff || [];
+
+    if (!Array.isArray(staffList) || staffList.length === 0) {
+      container.innerHTML = `<div class="error-box">⚠️ Không có nhân viên trong tab Staff<br><small>Vui lòng nhập dữ liệu vào Google Sheet tab "Staff"</small><br><button class="retry-btn" onclick="loadStaff()">🔄 Thử lại</button></div>`;
+      return;
+    }
+
+    // Store master data
+    state.masterData = data;
+
+    // DEBUG: log san_pham count để kiểm tra
+    console.log('[DGM] getMasterData response:', {
+      nhan_vien_count: (data.nhan_vien||[]).length,
+      san_pham_count:  (data.san_pham||[]).length,
+      diem_ban_count:  (data.diem_ban||[]).length,
+      own_brand_ids:   data.own_brand_ids,
+      san_pham_sample: (data.san_pham||[]).slice(0,2),
+    });
+
+    // Render staff grid
+    const grid = document.createElement('div');
+    grid.className = 'staff-grid';
+    staffList.forEach(s => {
+      const btn = document.createElement('div');
+      btn.className = 'staff-btn';
+      const initials = (s.ten_hien_thi || s.ho_ten || '?').charAt(0).toUpperCase();
+      btn.innerHTML = `
+        <div class="avatar">${initials}</div>
+        <div class="name">${s.ten_hien_thi || s.ho_ten || 'N/A'}</div>
+        <div class="role">${s.chuc_danh || ''}</div>`;
+      btn.onclick = () => selectUser(s);
+      grid.appendChild(btn);
+    });
+    container.innerHTML = '';
+    container.appendChild(grid);
+  } catch(e) {
+    container.innerHTML = `<div class="error-box">❌ Lỗi kết nối API<br><small>${e.message}</small><br><button class="retry-btn" onclick="loadStaff()">🔄 Thử lại</button></div>`;
+  }
+}
+
+function selectUser(staff) {
+  state.user = staff;
+  // Update home screen
+  const initial = (staff.ten_hien_thi || '?').charAt(0).toUpperCase();
+  document.getElementById('home-avatar').textContent = initial;
+  document.getElementById('home-name').textContent   = staff.ten_hien_thi || staff.ho_ten;
+  document.getElementById('home-role').textContent   = (staff.chuc_danh || '') + (staff.khu_vuc ? ' · ' + staff.khu_vuc : '');
+  _puToggleHomeCard();
+  loadDashboard();
+  goTo('scr-home');
+}
+
+async function loadDashboard() {
+  try {
+    const data = await apiFetch({ action: 'getDashboard' });
+    // ── KEY FIX: getDashboard returns all_surveys (v8), not survey_list
+    const surveys = data.all_surveys || data.survey_gan_nhat || [];
+    state.allSurveys = surveys;
+
+    // Filter my surveys
+    const myName = state.user?.ten_hien_thi || state.user?.ho_ten || '';
+    state.mySurveys = surveys.filter(s => s.ten_nhan_vien === myName);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const todayCount = state.mySurveys.filter(s => s.ngay_survey === today).length;
+    const weekAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+    const weekCount = state.mySurveys.filter(s => s.ngay_survey >= weekAgo).length;
+
+    document.getElementById('stat-today').textContent = todayCount;
+    document.getElementById('stat-week').textContent  = weekCount;
+    document.getElementById('stat-alert').textContent = data.canh_bao_chua_doc || 0;
+
+    renderHomeRecent();
+  } catch(e) {
+    console.warn('Dashboard load error:', e.message);
+  }
+}
+
+function renderHomeRecent() {
+  const el = document.getElementById('home-recent');
+  const list = state.mySurveys.slice(0, 5);
+  if (!list.length) {
+    el.innerHTML = `<div style="color:#9ca3af;font-size:13px;text-align:center;padding:20px;">Chưa có survey. Bắt đầu nhập survey đầu tiên!</div>`;
+    return;
+  }
+  el.innerHTML = list.map(s => {
+    const typeClass = s.phan_loai === 'own_brand' ? 'badge-ab' : 'badge-comp';
+    const chClass   = s.kenh === 'MT' ? 'badge-mt' : 'badge-gt';
+    const price     = s.gia ? Number(s.gia).toLocaleString('vi') + 'đ' : '—';
+    return `<div class="recent-item">
+      <div class="ri-top"><span class="ri-name">${s.ten_san_pham||'—'}</span><span style="color:var(--red);font-weight:700;">${price}</span></div>
+      <div class="ri-sub">
+        <span class="badge ${chClass}">${s.kenh||'—'}</span>
+        <span class="badge ${typeClass}">${s.ten_thuong_hieu||'—'}</span>
+        <span>${s.ten_diem_ban||'—'}</span>
+        <span style="margin-left:auto;color:#9ca3af;">${s.ngay_survey||'—'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════
+// FORM SETUP
+// ════════════════════════════════════════════
+function startSurvey(channel) {
+  state.channel = channel;
+  resetForm();
+  buildPhotoSlots();
+
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('f-date').value = today;
+  document.getElementById('form-user-chip').textContent = state.user?.ten_hien_thi || '—';
+  document.getElementById('form-date-chip').textContent = channel + ' · ' + today;
+
+  // Populate outlet dropdown (reset trước)
+  const outletSel = document.getElementById('f-outlet');
+  outletSel.innerHTML = '<option value="">-- Chọn điểm bán --</option>';
+
+  // GT: Hiện khu vực field, ẩn outlet cho đến khi chọn region
+  const isGT = channel === 'GT';
+  const regionField = document.getElementById('gt-region-field');
+  regionField.style.display = isGT ? 'block' : 'none';
+
+  if (isGT) {
+    // GT: reset outlet về trạng thái chờ chọn region
+    document.getElementById('f-gt-region').value = '';
+    document.getElementById('f-outlet').innerHTML = '<option value="">-- Chọn khu vực trước --</option>';
+    document.getElementById('gt-type-field').style.display = 'none';
+  } else {
+    // MT: populate outlets bình thường
+    const outlets = (state.masterData?.diem_ban || []).filter(o => o.kenh === 'MT');
+    outlets.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.ten_diem_ban;
+      opt.textContent = o.ten_diem_ban + (o.is_approaching === 'TRUE' ? ' 🎯' : '');
+      outletSel.appendChild(opt);
+    });
+    const addOpt = document.createElement('option');
+    addOpt.value = '__custom__';
+    addOpt.textContent = '➕ Thêm mới (không có trong danh sách)';
+    outletSel.appendChild(addOpt);
+    document.getElementById('gt-type-field').style.display = 'none';
+  }
+
+  // Populate product dropdown
+  populateProducts();
+
+  goTo('scr-form');
+}
+
+function populateProducts() {
+  // For own-brand: render bulk cards (called after outlet is chosen, or on load)
+  renderOwnBrandCards();
+}
+
+// ════════════════════════════════════════════
+// OWN BRAND BULK MODE
+// ════════════════════════════════════════════
+// State for each product row: { gia, status, facing }
+// status: '' | 'chua_kinh_doanh' | 'het_hang' | 'khoa_ma'
+let ownBrandInputs = {}; // keyed by ma_san_pham
+
+function renderOwnBrandCards() {
+  const wrap = document.getElementById('own-brand-list-wrap');
+  if (!wrap) return;
+
+  const allProducts = state.masterData?.san_pham || [];
+  const ownBrandIds = state.masterData?.own_brand_ids || ['AB','AN','DU'];
+
+  const products = allProducts.filter(p => {
+    if (p.trang_thai && p.trang_thai.toLowerCase() !== 'active') return false;
+    const loai = (p.loai_thuong_hieu || '').toLowerCase().trim();
+    const brand = (p.thuong_hieu || '').trim();
+    if (loai === 'own_brand') return true;
+    if (loai === 'competitor') return false;
+    return ownBrandIds.includes(brand);
+  });
+
+  if (products.length === 0) {
+    wrap.innerHTML = `<div style="padding:16px;color:var(--gray);font-size:13px;text-align:center;">Chưa có sản phẩm own brand Active</div>`;
+    return;
+  }
+
+  // Reset inputs
+  ownBrandInputs = {};
+  products.forEach(p => {
+    ownBrandInputs[p.ma_san_pham] = { gia: '', status: '', facing: '', product: p };
+  });
+
+  // Group by thuong_hieu
+  const groups = {};
+  products.forEach(p => {
+    const b = p.thuong_hieu || 'Khác';
+    if (!groups[b]) groups[b] = [];
+    groups[b].push(p);
+  });
+
+  let html = `<div class="own-brand-summary">
+    <span>📋 ${products.length} sản phẩm active</span>
+    <strong id="obl-filled-count">0 đã nhập</strong>
+  </div>`;
+
+  Object.entries(groups).forEach(([brand, prods]) => {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;padding:6px 0 4px;">${brand}</div>`;
+    prods.forEach(p => {
+      const id = p.ma_san_pham;
+      const spec = (p.quy_cach_mac_dinh ? p.quy_cach_mac_dinh + (p.don_vi||'') : '') + (p.bao_bi ? ' · ' + p.bao_bi : '');
+      html += `
+      <div class="own-product-card" id="opc-${id}">
+        <div class="opc-header" onclick="toggleOpcBody('${id}')">
+          <div>
+            <div class="opc-name">${p.ten_san_pham}</div>
+            ${spec ? `<div style="font-size:11px;color:var(--gray);">${spec}</div>` : ''}
+          </div>
+          <span class="opc-status-badge gray" id="opc-badge-${id}">Chưa nhập</span>
+          <span style="color:var(--gray);font-size:16px;" id="opc-chevron-${id}">›</span>
+        </div>
+        <div class="opc-body" id="opc-body-${id}" style="display:none;">
+          <div class="opc-price-row">
+            <div>
+              <div class="field-label">Giá NTD (đ) <span style="font-size:10px;color:#9ca3af;">/lon</span></div>
+              <input type="number" id="opc-gia-${id}" placeholder="0" min="0"
+                oninput="onOpcGia('${id}',this.value)"
+                onclick="if(this.value===''){}">
+            </div>
+            <div>
+              <div class="field-label">Đ.vị tính giá</div>
+              <select id="opc-unit-${id}" onchange="onOpcUnit('${id}',this.value)">
+                <option value="lon">lon</option>
+                <option value="chai">chai</option>
+                <option value="bịch">bịch</option>
+                <option value="gói">gói</option>
+                <option value="hộp">hộp</option>
+              </select>
+            </div>
+            <div>
+              <div class="field-label">Facing</div>
+              <input type="number" id="opc-facing-${id}" placeholder="0" min="0"
+                oninput="onOpcFacing('${id}',this.value)">
+            </div>
+          </div>
+          <div>
+            <div class="field-label" style="margin-bottom:5px;">Trạng thái đặc biệt</div>
+            <div class="opc-status-row">
+              <button class="opc-status-btn" id="opc-st-chua-${id}"
+                onclick="setOpcStatus('${id}','chua_kinh_doanh')">🚫 Chưa KD</button>
+              <button class="opc-status-btn" id="opc-st-het-${id}"
+                onclick="setOpcStatus('${id}','het_hang')">📦 Hết hàng</button>
+              <button class="opc-status-btn" id="opc-st-khoa-${id}"
+                onclick="setOpcStatus('${id}','khoa_ma')">🔒 Khóa mã</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    });
+  });
+
+  wrap.innerHTML = html;
+}
+
+function toggleOpcBody(id) {
+  const body = document.getElementById('opc-body-' + id);
+  const chev = document.getElementById('opc-chevron-' + id);
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  chev.textContent = isOpen ? '›' : '⌄';
+  if (!isOpen) {
+    // Focus price input
+    setTimeout(() => { const inp = document.getElementById('opc-gia-' + id); if (inp) inp.focus(); }, 50);
+  }
+}
+
+function onOpcGia(id, val) {
+  ownBrandInputs[id].gia = val;
+  if (val && val > 0) {
+    // Clear any special status when price entered
+    if (ownBrandInputs[id].status) {
+      setOpcStatus(id, ''); // deselect
+    }
+    ownBrandInputs[id].status = '';
+    _clearOpcStatusBtns(id);
+  }
+  _updateOpcCard(id);
+}
+
+function onOpcUnit(id, val) {
+  ownBrandInputs[id].unit = val;
+}
+
+function onOpcFacing(id, val) {
+  ownBrandInputs[id].facing = val;
+}
+
+function setOpcStatus(id, status) {
+  const cur = ownBrandInputs[id].status;
+  // Toggle off if same
+  const newStatus = cur === status ? '' : status;
+  ownBrandInputs[id].status = newStatus;
+
+  if (newStatus) {
+    // Clear price when status selected
+    const inp = document.getElementById('opc-gia-' + id);
+    if (inp) inp.value = '';
+    ownBrandInputs[id].gia = '';
+  }
+
+  _clearOpcStatusBtns(id);
+  if (newStatus) {
+    const btnMap = { 'chua_kinh_doanh': 'chua', 'het_hang': 'het', 'khoa_ma': 'khoa' };
+    const btn = document.getElementById('opc-st-' + btnMap[newStatus] + '-' + id);
+    if (btn) btn.className = 'opc-status-btn ' + _opcStatusClass(newStatus);
+  }
+  _updateOpcCard(id);
+}
+
+function _clearOpcStatusBtns(id) {
+  ['chua','het','khoa'].forEach(k => {
+    const b = document.getElementById('opc-st-' + k + '-' + id);
+    if (b) b.className = 'opc-status-btn';
+  });
+}
+
+function _opcStatusClass(status) {
+  if (status === 'het_hang') return 'active-orange';
+  if (status === 'khoa_ma')  return 'active-red';
+  if (status === 'chua_kinh_doanh') return 'active-gray';
+  return '';
+}
+
+function _updateOpcCard(id) {
+  const inp  = ownBrandInputs[id];
+  const card = document.getElementById('opc-' + id);
+  const badge = document.getElementById('opc-badge-' + id);
+  if (!card || !badge) return;
+
+  const hasGia    = inp.gia && Number(inp.gia) > 0;
+  const hasStatus = !!inp.status;
+  const hasData   = hasGia || hasStatus;
+
+  card.classList.toggle('has-data', hasData);
+
+  if (hasGia) {
+    badge.className = 'opc-status-badge green';
+    badge.textContent = '💰 ' + Number(inp.gia).toLocaleString('vi') + 'đ';
+  } else if (inp.status === 'chua_kinh_doanh') {
+    badge.className = 'opc-status-badge gray';
+    badge.textContent = '🚫 Chưa KD';
+  } else if (inp.status === 'het_hang') {
+    badge.className = 'opc-status-badge'; badge.style.background='rgba(245,158,11,0.12)'; badge.style.color='#92400e';
+    badge.textContent = '📦 Hết hàng';
+  } else if (inp.status === 'khoa_ma') {
+    badge.className = 'opc-status-badge'; badge.style.background='rgba(200,16,46,0.08)'; badge.style.color='var(--red)';
+    badge.textContent = '🔒 Khóa mã';
+  } else {
+    badge.className = 'opc-status-badge gray';
+    badge.style.background = ''; badge.style.color = '';
+    badge.textContent = 'Chưa nhập';
+  }
+
+  // Update summary count
+  const filled = Object.values(ownBrandInputs).filter(x => x.gia || x.status).length;
+  const summary = document.getElementById('obl-filled-count');
+  if (summary) summary.textContent = filled + ' đã nhập';
+}
+
+function _getOwnBrandRecords(baseFields) {
+  // Returns array of records for all filled own-brand inputs
+  const records = [];
+  Object.entries(ownBrandInputs).forEach(([id, inp]) => {
+    if (!inp.gia && !inp.status) return; // skip empty
+    const p = inp.product;
+    const unitEl = document.getElementById('opc-unit-' + id);
+    const unit = unitEl ? unitEl.value : (p.don_vi || 'lon');
+    records.push({
+      ...baseFields,
+      ten_san_pham:     p.ten_san_pham,
+      phan_loai:        'own_brand',
+      loai_san_pham:    p.nhom_san_pham || '',
+      ten_thuong_hieu:  p.thuong_hieu || '',
+      quy_cach:         p.quy_cach_mac_dinh || '',
+      don_vi:           p.don_vi || '',
+      bao_bi:           p.bao_bi || '',
+      loai_gia:         'Giá NTD',
+      don_vi_tinh_gia:  unit,
+      gia:              inp.status ? '' : (inp.gia || ''),
+      trang_thai_sp:    inp.status || '',  // 'chua_kinh_doanh' | 'het_hang' | 'khoa_ma' | ''
+      vi_tri_ke:        '',
+      facing:           inp.facing || '',
+      nsx_nha_phan_phoi: p.nsx_nha_phan_phoi || '',
+      xuat_xu:          p.xuat_xu || '',
+      phuong_thuc_nhap: 'bulk_own',
+      _ma_san_pham:     p.ma_san_pham || '',
+      _ma_thuong_hieu:  p.thuong_hieu || '',
+    });
+  });
+  return records;
+}
+
+function resetForm() {
+  state.photoFiles = {1:null,2:null,3:null,4:null};
+  state.extraFiles = [];
+  state.productType = 'own';
+  state.photoSkipReason = null; // clear skip state
+  document.querySelectorAll('#scr-form input:not([type=file]), #scr-form select, #scr-form textarea').forEach(el => {
+    if (el.tagName === 'SELECT') el.selectedIndex = 0;
+    else el.value = '';
+  });
+  document.getElementById('custom-outlet-wrap').style.display = 'none';
+  document.getElementById('backdate-warn').classList.remove('show');
+  document.getElementById('gt-region-field').style.display = 'none';
+  const gtRegEl = document.getElementById('f-gt-region');
+  if (gtRegEl) gtRegEl.value = '';
+  // Hide smart-skip banner nếu có
+  const skipBanner = document.getElementById('photo-skip-banner');
+  if (skipBanner) skipBanner.style.display = 'none';
+  // Restore photo & NIP required state
+  _setPhotoNIPRequired(true);
+  // Reset own-brand bulk inputs
+  ownBrandInputs = {};
+  const oblWrap = document.getElementById('own-brand-list-wrap');
+  if (oblWrap) oblWrap.innerHTML = '';
+  setProductType('own');
+}
+
+function buildPhotoSlots() {
+  const container = document.getElementById('photo-slots');
+  container.innerHTML = '';
+  PHOTO_SLOTS.forEach(slot => {
+    const div = document.createElement('div');
+    div.className = `photo-slot${slot.req ? ' required' : ''}`;
+    div.id = `photo-slot-${slot.num}`;
+    div.innerHTML = `
+      <div class="slot-header">
+        <div class="slot-num">${slot.num}</div>
+        <div><div class="slot-name">${slot.icon} ${slot.name}</div><div class="slot-desc">${slot.desc}</div></div>
+        <div class="${slot.req ? 'slot-req' : 'slot-opt'}">${slot.req ? 'Bắt buộc' : 'Tuỳ chọn'}</div>
+      </div>
+      <div class="slot-body">
+        <img id="photo-preview-${slot.num}" class="photo-preview">
+        <div class="photo-actions">
+          <label class="photo-btn" for="photo-file-${slot.num}">📷 Chụp / Chọn ảnh</label>
+          <input type="file" id="photo-file-${slot.num}" accept="image/*" onchange="handlePhoto(${slot.num},this)">
+        </div>
+      </div>`;
+    container.appendChild(div);
+  });
+  updatePhotoProgress();
+}
+
+function handlePhoto(num, input) {
+  const file = input.files[0];
+  if (!file) return;
+  state.photoFiles[num] = file;
+  const preview = document.getElementById(`photo-preview-${num}`);
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+  const slot = document.getElementById(`photo-slot-${num}`);
+  slot.classList.add('captured');
+  slot.classList.remove('missing');
+  updatePhotoProgress();
+}
+
+function updatePhotoProgress() {
+  const count = Object.values(state.photoFiles).filter(Boolean).length;
+  document.getElementById('photo-progress-bar').style.width = (count/4*100) + '%';
+  if (state.photoSkipReason) {
+    document.getElementById('photo-progress-label').textContent = count > 0
+      ? 'Ảnh bổ sung: ' + count + '/4 (tuỳ chọn)'
+      : 'Ảnh tuỳ chọn — bỏ qua hoặc chụp để cập nhật';
+  } else {
+    document.getElementById('photo-progress-label').textContent = 'Ảnh bắt buộc: ' + count + '/4';
+  }
+}
+
+function addExtraPhotos(input) {
+  Array.from(input.files).forEach(f => {
+    state.extraFiles.push(f);
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(f);
+    img.className = 'extra-thumb';
+    document.getElementById('extra-grid').appendChild(img);
+  });
+}
+
+// ════════════════════════════════════════════
+// FORM EVENTS
+// ════════════════════════════════════════════
+function onGTRegionChange() {
+  const region = document.getElementById('f-gt-region').value;
+  if (!region) return;
+
+  // ── Lọc outlets theo region từ masterData ──
+  const allOutlets = state.masterData?.diem_ban || [];
+  const regionOutlets = allOutlets.filter(o =>
+    o.kenh === 'GT' && o.gt_region === region
+  );
+
+  // ── Lọc loại điểm bán theo quy tắc từng khu vực ──
+  // GT South:   chỉ Chợ
+  // GT Central: chỉ Chợ (Huế & Đà Nẵng)
+  // GT North:   Mini-mart + Chợ
+  const allowedTypes = {
+    'GT North':   ['Chợ', 'Mini-mart', 'GT outlet'],
+    'GT South':   ['Chợ', 'GT outlet'],
+    'GT Central': ['Chợ', 'GT outlet'],
+  };
+  const allowed = allowedTypes[region] || [];
+  const filteredOutlets = regionOutlets.filter(o =>
+    !o.loai_diem_ban || allowed.includes(o.loai_diem_ban)
+  );
+
+  // ── Populate outlet dropdown ──
+  const outletSel = document.getElementById('f-outlet');
+  outletSel.innerHTML = '<option value="">-- Chọn điểm bán --</option>';
+  filteredOutlets.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.ten_diem_ban;
+    const typeIcon = o.loai_diem_ban === 'Mini-mart' ? '🏬' : o.loai_diem_ban === 'Chợ' ? '🏪' : '📦';
+    opt.textContent = typeIcon + ' ' + o.ten_diem_ban;
+    opt.dataset.loai = o.loai_diem_ban || '';
+    outletSel.appendChild(opt);
+  });
+  // Không thêm "Thêm mới" cho GT vì điểm bán đã được kiểm soát trong master data
+
+  // ── Auto-fill loại điểm bán theo region nếu chỉ có 1 loại ──
+  const typeField = document.getElementById('gt-type-field');
+  const typeSel   = document.getElementById('f-gt-type');
+  typeField.style.display = 'block';
+
+  if (region === 'GT South' || region === 'GT Central') {
+    // Chỉ có Chợ → tự điền, không cần user chọn
+    typeSel.value = 'Chợ';
+    typeField.style.display = 'none'; // ẩn vì đã fix
+  } else {
+    // GT North: có cả Mini-mart và Chợ → để user chọn
+    typeSel.value = '';
+    typeField.style.display = 'block';
+  }
+
+  // Reset outlet custom field
+  document.getElementById('custom-outlet-wrap').style.display = 'none';
+  document.getElementById('f-outlet-custom').value = '';
+
+  // Auto-update form date chip
+  const date = document.getElementById('f-date').value;
+  document.getElementById('form-date-chip').textContent = 'GT · ' + region.replace('GT ','') + ' · ' + date;
+}
+
+function onOutletChange() {
+  const val  = document.getElementById('f-outlet').value;
+  const isGT = state.channel === 'GT';
+
+  document.getElementById('custom-outlet-wrap').style.display = val === '__custom__' ? 'block' : 'none';
+
+  // GT North: khi chọn outlet, auto-fill loại nếu outlet có data loai_diem_ban
+  if (isGT && val && val !== '__custom__') {
+    const outlets = state.masterData?.diem_ban || [];
+    const found   = outlets.find(o => o.ten_diem_ban === val && o.kenh === 'GT');
+    if (found?.loai_diem_ban) {
+      const typeSel = document.getElementById('f-gt-type');
+      typeSel.value = found.loai_diem_ban;
+    }
+  }
+}
+
+function onProductChange() {
+  const sel = document.getElementById('f-product');
+  const opt = sel.options[sel.selectedIndex];
+  const chip = document.getElementById('product-chip');
+  if (opt && opt.dataset.json) {
+    try {
+      const p = JSON.parse(opt.dataset.json);
+      chip.textContent = '🏭 ' + (p.nsx_nha_phan_phoi||'—') + '  🌏 ' + (p.xuat_xu||'—') + '  📦 ' + (p.quy_cach_mac_dinh||'—') + (p.don_vi||'');
+      chip.classList.add('show');
+      // Smart-skip check
+      _checkProductSurveyed(p.ten_san_pham, '');
+    } catch(e) { chip.classList.remove('show'); }
+  } else {
+    chip.classList.remove('show');
+    _setPhotoNIPRequired(true);
+    const banner = document.getElementById('photo-skip-banner');
+    if (banner) banner.style.display = 'none';
+  }
+}
+
+// ══════════════════════════════════════════
+// SMART-SKIP: ảnh & NIP không bắt buộc nếu
+// cùng nhân viên đã survey sản phẩm này trước
+// ══════════════════════════════════════════
+function _checkProductSurveyed(productName, brandName) {
+  if (!productName) { _setPhotoNIPRequired(true); return; }
+
+  const myId    = state.user?.ma_nhan_vien || state.user?.ten_hien_thi || '';
+  const surveys = state.mySurveys || [];
+
+  // Match theo tên SP (lowercase, trim) — không phân biệt hoa thường
+  const nameKey = productName.toLowerCase().trim();
+  const found   = surveys.find(s => {
+    const sameUser = (s._ma_nhan_vien || s.ten_nhan_vien || '') === myId
+                  || (s.ten_nhan_vien || '') === (state.user?.ten_hien_thi || '');
+    const sameProd = (s.ten_san_pham || '').toLowerCase().trim() === nameKey;
+    return sameUser && sameProd;
+  });
+
+  const banner  = document.getElementById('photo-skip-banner');
+  const detail  = document.getElementById('photo-skip-detail');
+  const hintTxt = document.getElementById('photo-hint-text');
+
+  if (found) {
+    // Đã survey → skip
+    state.photoSkipReason = found;
+    _setPhotoNIPRequired(false);
+    if (banner) {
+      banner.style.display = 'block';
+      if (detail) detail.textContent = 'Survey gần nhất: ' + (found.ngay_survey || '?') + ' tại ' + (found.ten_diem_ban || '?');
+    }
+    if (hintTxt) hintTxt.style.display = 'none';
+  } else {
+    // Chưa survey → bắt buộc bình thường
+    state.photoSkipReason = null;
+    _setPhotoNIPRequired(true);
+    if (banner) banner.style.display = 'none';
+    if (hintTxt) hintTxt.style.display = 'block';
+  }
+}
+
+// Bật/tắt required cho photo slots và NIP fields
+function _setPhotoNIPRequired(required) {
+  // Photo slots — cập nhật badge "Bắt buộc" / "Tuỳ chọn"
+  PHOTO_SLOTS.forEach(slot => {
+    const slotEl = document.getElementById('photo-slot-' + slot.num);
+    if (!slotEl) return;
+    const badge = slotEl.querySelector('.slot-req, .slot-opt');
+    if (badge) {
+      badge.className = required ? 'slot-req' : 'slot-opt';
+      badge.textContent = required ? 'Bắt buộc' : 'Tuỳ chọn';
+    }
+    slotEl.classList.toggle('required', required);
+  });
+  // NIP fields — chỉ áp dụng cho competitor (own brand NIP không bắt buộc từ đầu)
+  if (state.productType === 'comp') {
+    const nipReqSpans = document.querySelectorAll('#nip-section .nip-field span[style*="color:var(--red)"]');
+    nipReqSpans.forEach(sp => { sp.style.display = required ? '' : 'none'; });
+    const nipSection = document.getElementById('nip-section');
+    if (nipSection) {
+      const title = nipSection.querySelector('.section-title');
+      if (title) title.textContent = required
+        ? '🔬 Thông tin dinh dưỡng (NIP)'
+        : '🔬 Thông tin dinh dưỡng (NIP) — tuỳ chọn';
+    }
+  }
+  // Progress label update
+  updatePhotoProgress();
+}
+
+function setProductType(type) {
+  state.productType = type;
+  document.getElementById('own-fields').style.display  = type === 'own'  ? 'block' : 'none';
+  document.getElementById('comp-fields').style.display = type === 'comp' ? 'block' : 'none';
+
+  // Comp-only sections (price, shelf, NIP, photos) only for competitor
+  const compSections = document.getElementById('comp-only-sections');
+  if (compSections) compSections.style.display = type === 'comp' ? 'block' : 'none';
+
+  const ownBtn  = document.getElementById('type-own');
+  const compBtn = document.getElementById('type-comp');
+  ownBtn.className  = 'type-btn' + (type === 'own'  ? ' active-red'  : '');
+  compBtn.className = 'type-btn' + (type === 'comp' ? ' active-blue' : '');
+  // Reset skip state khi đổi loại SP
+  const banner = document.getElementById('photo-skip-banner');
+  if (banner) banner.style.display = 'none';
+  const hintTxt = document.getElementById('photo-hint-text');
+  if (hintTxt) hintTxt.style.display = 'block';
+  _setPhotoNIPRequired(true);
+}
+
+// Debounce check khi user gõ tên SP đối thủ
+let _compNameTimer;
+function _onCompNameInput() {
+  clearTimeout(_compNameTimer);
+  _compNameTimer = setTimeout(function() {
+    const base    = (document.getElementById('f-comp-name').value || '').trim();
+    const flavour = (document.getElementById('f-comp-flavour').value || '').trim();
+    const full    = flavour ? base + ' ' + flavour : base;
+    _checkProductSurveyed(full, document.getElementById('f-comp-brand').value || '');
+  }, 600); // chờ 600ms sau khi user ngừng gõ
+}
+
+function checkBackdate() {
+  const val  = document.getElementById('f-date').value;
+  const today = new Date().toISOString().slice(0,10);
+  const warn  = document.getElementById('backdate-warn');
+  warn.classList.toggle('show', val < today);
+  document.getElementById('form-date-chip').textContent = state.channel + ' · ' + val;
+}
+
+function validateForm() {
+  // Common: date + outlet
+  const dateVal = document.getElementById('f-date').value;
+  if (!dateVal) { showToast('⚠️ Vui lòng chọn ngày survey', 'error'); return false; }
+
+  if (state.channel === 'GT') {
+    const regionVal = document.getElementById('f-gt-region')?.value || '';
+    if (!regionVal) { showToast('⚠️ Vui lòng chọn khu vực GT', 'error'); return false; }
+  }
+
+  const outletVal  = document.getElementById('f-outlet').value;
+  const customVal  = document.getElementById('f-outlet-custom').value.trim();
+  if (!outletVal || (outletVal === '__custom__' && !customVal)) {
+    showToast('⚠️ Vui lòng chọn điểm bán', 'error'); return false;
+  }
+
+  if (state.productType === 'own') {
+    const filled = Object.values(ownBrandInputs).filter(x => x.gia || x.status);
+    if (filled.length === 0) {
+      showToast('⚠️ Nhập ít nhất 1 sản phẩm (giá hoặc trạng thái)', 'error');
+      return false;
+    }
+    return true;
+  }
+
+  // Competitor mode
+  if (!document.getElementById('f-comp-name').value.trim()) {
+    showToast('⚠️ Vui lòng nhập tên sản phẩm', 'error'); return false;
+  }
+  if (!document.getElementById('f-comp-brand').value.trim()) {
+    showToast('⚠️ Vui lòng nhập thương hiệu', 'error'); return false;
+  }
+  if (!document.getElementById('f-price').value) {
+    const el = document.getElementById('f-price');
+    el.classList.add('error');
+    el.addEventListener('input', () => el.classList.remove('error'), { once: true });
+    showToast('⚠️ Vui lòng nhập giá', 'error'); return false;
+  }
+
+  const photosCount = Object.values(state.photoFiles).filter(Boolean).length;
+  if (!state.photoSkipReason && photosCount < 4) {
+    showToast('📸 Còn thiếu ' + (4 - photosCount) + ' ảnh — sẽ lưu không có ảnh', 'error');
+  }
+  return true;
+}
+
+// ════════════════════════════════════════════
+// SUBMIT
+// ════════════════════════════════════════════
+async function submitForm() {
+  if (!validateForm()) return;
+
+  const outletVal  = document.getElementById('f-outlet').value;
+  const outletName = outletVal === '__custom__'
+    ? document.getElementById('f-outlet-custom').value.trim()
+    : outletVal;
+
+  const baseFields = {
+    ngay_survey:      document.getElementById('f-date').value,
+    ten_nhan_vien:    state.user?.ten_hien_thi || state.user?.ho_ten || '',
+    _ma_nhan_vien:    state.user?.ma_nhan_vien || '',
+    kenh:             state.channel,
+    ten_diem_ban:     outletName,
+    loai_diem_ban_gt: document.getElementById('f-gt-type')?.value || '',
+    gt_region:        state.channel === 'GT' ? (document.getElementById('f-gt-region')?.value || '') : '',
+    ghi_chu:          document.getElementById('f-note').value,
+  };
+
+  if (state.productType === 'own') {
+    // ── BATCH submit own brand ──
+    const records = _getOwnBrandRecords(baseFields);
+    showOverlay('Đang lưu survey...', 'Gửi ' + records.length + ' sản phẩm lên Google Sheets...');
+    try {
+      const result = await apiPost({ action: 'submitBatchSurvey', data: records });
+      hideOverlay();
+      if (result.error) { showToast('❌ Lỗi: ' + result.error, 'error'); return; }
+      const count = result.count || records.length;
+      state.lastSurveyId = result.ma_survey_first || '';
+      document.getElementById('success-id').textContent = '✅ Đã lưu ' + count + ' sản phẩm';
+      records.forEach(r => state.mySurveys.unshift({ ...r, phan_loai: 'own_brand' }));
+      loadDashboard();
+      goTo('scr-success');
+    } catch(e) {
+      hideOverlay();
+      showToast('❌ Lỗi kết nối: ' + e.message, 'error');
+    }
+  } else {
+    // ── SINGLE submit competitor ──
+    showOverlay('Đang lưu survey...', 'Đang gửi dữ liệu lên Google Sheets...');
+    try {
+      const payload = buildCompPayload(baseFields);
+      const result  = await apiPost({ action: 'submitSurvey', data: payload });
+      hideOverlay();
+      if (result.error) { showToast('❌ Lỗi: ' + result.error, 'error'); return; }
+      state.lastSurveyId = result.ma_survey || '';
+      document.getElementById('success-id').textContent = 'Mã: ' + state.lastSurveyId;
+      state.mySurveys.unshift({ ...payload, ma_survey: state.lastSurveyId });
+      loadDashboard();
+      goTo('scr-success');
+    } catch(e) {
+      hideOverlay();
+      showToast('❌ Lỗi kết nối: ' + e.message, 'error');
+    }
+  }
+}
+
+function buildCompPayload(baseFields) {
+  const baseName    = document.getElementById('f-comp-name').value.trim();
+  const flavour     = document.getElementById('f-comp-flavour').value.trim();
+  const productName = flavour ? baseName + ' ' + flavour : baseName;
+  return {
+    ...baseFields,
+    ten_san_pham:       productName,
+    phan_loai:          'competitor',
+    loai_san_pham:      document.getElementById('f-comp-type').value.trim(),
+    ten_thuong_hieu:    document.getElementById('f-comp-brand').value.trim(),
+    quy_cach:           document.getElementById('f-comp-qty').value,
+    don_vi:             document.getElementById('f-comp-unit').value,
+    bao_bi:             '',
+    nsx_nha_phan_phoi:  document.getElementById('f-comp-mfg').value.trim(),
+    xuat_xu:            document.getElementById('f-comp-origin').value.trim(),
+    loai_gia:           document.getElementById('f-price-type').value,
+    don_vi_tinh_gia:    document.getElementById('f-price-unit').value,
+    gia:                document.getElementById('f-price').value,
+    vi_tri_ke:          document.getElementById('f-shelf').value,
+    facing:             document.getElementById('f-facing').value,
+    phuong_thuc_nhap:   'manual',
+    han_su_dung:        document.getElementById('f-exp').value,
+    ngay_sx:            document.getElementById('f-mfgdate').value,
+    nha_phan_phoi_vn:   document.getElementById('f-distrib').value,
+    thanh_phan:         document.getElementById('f-ingredients').value,
+    nang_luong_kcal:    document.getElementById('nip-kcal').value,
+    chat_dam_protein:   document.getElementById('nip-protein').value,
+    chat_beo_tong:      document.getElementById('nip-fat').value,
+    carbohydrate_tong:  document.getElementById('nip-carb').value,
+    duong_sugar:        document.getElementById('nip-sugar').value,
+    natri_mg:           document.getElementById('nip-sodium').value,
+    chat_beo_bao_hoa:   document.getElementById('nip-satfat').value,
+    chat_xo:            document.getElementById('nip-fiber').value,
+    vitamin_khoang_chat: document.getElementById('nip-vitamin').value,
+    so_anh_da_chup:     Object.values(state.photoFiles).filter(Boolean).length,
+    so_anh_bo_sung:     state.extraFiles.length,
+    link_anh:           '',
+    _ma_san_pham:       '',
+    _ma_thuong_hieu:    '',
+  };
+}
+
+// Legacy alias
+function buildPayload() { return buildCompPayload({}); }
+
+function newSurvey() {
+  resetForm();
+  startSurvey(state.channel);
+}
+
+// ════════════════════════════════════════════
+// HISTORY
+// ════════════════════════════════════════════
+let historyFilter = 'all';
+function filterHistory(filter, btn) {
+  historyFilter = filter;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderHistory(filter);
+}
+
+function renderHistory(filter) {
+  const el = document.getElementById('history-list');
+  let list = state.mySurveys;
+  const today = new Date().toISOString().slice(0,10);
+  if (filter === 'today')   list = list.filter(s => s.ngay_survey === today);
+  else if (filter === 'MT') list = list.filter(s => s.kenh === 'MT');
+  else if (filter === 'GT') list = list.filter(s => s.kenh === 'GT');
+  else if (filter === 'own')     list = list.filter(s => s.phan_loai === 'own_brand');
+  else if (filter === 'comp')    list = list.filter(s => s.phan_loai === 'competitor');
+  else if (filter === 'changed') list = list.filter(s => s._price_changed);
+
+  if (!list.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af;">Không có dữ liệu</div>`;
+    return;
+  }
+  el.innerHTML = list.map(s => {
+    const typeClass = s.phan_loai === 'own_brand' ? 'badge-ab' : 'badge-comp';
+    const chClass   = s.kenh === 'MT' ? 'badge-mt' : 'badge-gt';
+    const price     = s.gia ? Number(s.gia).toLocaleString('vi') + ' đ' : '—';
+    return `<div class="history-card">
+      <div class="hc-top">
+        <div class="hc-name">${s.ten_san_pham||'—'}</div>
+        <div class="hc-price">${price}</div>
+      </div>
+      <div class="hc-outlet">${s.ten_diem_ban||'—'} · ${s.ngay_survey||'—'}</div>
+      <div class="hc-meta" style="margin-top:6px;">
+        <span class="badge ${chClass}">${s.kenh||'—'}</span>
+        <span class="badge ${typeClass}">${s.ten_thuong_hieu||'—'}</span>
+        ${s.quy_cach ? `<span style="font-size:11px;color:var(--gray);">${s.quy_cach}${s.don_vi||''}</span>` : ''}
+        ${s.vi_tri_ke ? `<span style="font-size:11px;color:var(--gray);">Kệ: ${s.vi_tri_ke}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════════
+function showOverlay(title, sub) {
+  const ov = document.getElementById('uploading-overlay');
+  ov.querySelector('.uploading-text').textContent = title;
+  document.getElementById('uploading-sub').textContent = sub;
+  ov.classList.remove('hidden');
+}
+function hideOverlay() {
+  document.getElementById('uploading-overlay').classList.add('hidden');
+}
+
+let toastTimer;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  loadStaff();
+});
+
+// ════════════════════════════════════════════
+// PRICE UPDATE MODULE
+// ════════════════════════════════════════════
+
+// PU state — hoàn toàn tách biệt với survey state
+const puState = {
+  event:      null,   // { ma_tang_gia, ten_su_kien, kenh, ... }
+  products:   [],     // danh sách SP active filtered cho event + user
+  inputs:     {},     // keyed by ma_san_pham — { status, gia_outlet_truoc, gia_outlet_sau, gia_ntd_truoc, gia_ntd_sau, ngay_ap_dung, ghi_chu }
+  // MT flow: DGM → Khách MT → NTD
+  // GT flow: DGM → Agent → Outlet/Điểm bán → NTD
+};
+
+// ── Hiện/ẩn action card theo chức danh user ──
+function _puToggleHomeCard() {
+  const card = document.getElementById('action-price-update');
+  if (!card) return;
+  const role = (state.user?.chuc_danh || '').toLowerCase();
+  // Chỉ hiện với Sales Representative (leader) và Sales Manager
+  const show = role.includes('representative') || role.includes('manager');
+  card.style.display = show ? 'flex' : 'none';
+}
+
+// ── Entry point từ Home ──
+function startPriceUpdate() {
+  goTo('scr-pu-events');
+  puLoadEvents();
+}
+
+// ── Load danh sách đợt tăng giá active ──
+async function puLoadEvents() {
+  const listEl  = document.getElementById('pu-events-list');
+  const userLbl = document.getElementById('pu-events-user-label');
+
+  const u = state.user;
+  const userChannel = (u?.kenh || '').toUpperCase(); // MT | GT
+  const userRegion  = u?.khu_vuc || '';             // North | South | Central | Nationwide
+
+  userLbl.textContent = (u?.ten_hien_thi || '--') + ' · ' + userChannel
+    + (userRegion && userRegion !== 'Nationwide' ? ' · ' + userRegion : '');
+
+  listEl.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af;">
+    <div class="spinner" style="margin:0 auto 12px;border-top-color:var(--navy);"></div>
+    Đang tải đợt tăng giá...
+  </div>`;
+
+  try {
+    const data = await apiFetch({ action: 'getPriceEvents' });
+    const events = (data.price_events || []).filter(e => {
+      if ((e.trang_thai || '').toLowerCase() !== 'active') return false;
+      // Lọc theo kênh của user
+      const evKenh = (e.kenh || '').toUpperCase();
+      if (userChannel === 'MT' && evKenh !== 'MT') return false;
+      if (userChannel === 'GT' && evKenh !== 'GT') return false;
+      return true;
+    });
+
+    if (!events.length) {
+      listEl.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af;">
+        ✅ Không có đợt tăng giá đang active
+      </div>`;
+      return;
+    }
+
+    // Group by ma_tang_gia (nhiều dòng SP → 1 event card)
+    const grouped = {};
+    events.forEach(e => {
+      const key = e.ma_tang_gia;
+      if (!grouped[key]) {
+        grouped[key] = { ...e, sp_count: 0, sp_list: [] };
+      }
+      grouped[key].sp_count++;
+      grouped[key].sp_list.push(e.ma_san_pham || e.ten_san_pham);
+    });
+
+    listEl.innerHTML = Object.values(grouped).map(ev => {
+      const dateStr = ev.ngay_dgm_ap_dung
+        ? new Date(ev.ngay_dgm_ap_dung).toLocaleDateString('vi-VN')
+        : '—';
+      return `<div class="pu-event-card" onclick="puSelectEvent('${ev.ma_tang_gia}')">
+        <div class="pu-event-name">${ev.ten_su_kien}</div>
+        <div class="pu-event-meta">
+          <span class="pu-event-badge">${ev.kenh}</span>
+          <span>📅 Áp dụng: ${dateStr}</span>
+          <span>📦 ${ev.sp_count} SKU trong đợt</span>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    listEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--red);">
+      ❌ Lỗi tải dữ liệu<br><small>${e.message}</small><br>
+      <button class="retry-btn" style="margin-top:10px;background:var(--navy);color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;" onclick="puLoadEvents()">🔄 Thử lại</button>
+    </div>`;
+  }
+}
+
+// ── User chọn 1 đợt → load list SKU ──
+async function puSelectEvent(maTangGia) {
+  const u = state.user;
+  const userChannel = (u?.kenh || '').toUpperCase();
+  const userRegion  = _puGetRegion(); // 'GT North' | 'GT South' | 'GT Central' | null
+
+  // Lấy event data từ masterData price_events
+  let evData = null;
+  try {
+    const res = await apiFetch({ action: 'getPriceEvents' });
+    const allEvents = res.price_events || [];
+    // Lọc dòng thuộc event này
+    const evRows = allEvents.filter(e => e.ma_tang_gia === maTangGia);
+    if (!evRows.length) { showToast('❌ Không tìm thấy đợt tăng giá', 'error'); return; }
+    evData = evRows[0]; // metadata
+    puState.event = { ...evData, rows: evRows };
+  } catch(e) {
+    showToast('❌ Lỗi: ' + e.message, 'error'); return;
+  }
+
+  // Lấy toàn bộ sản phẩm Active own_brand
+  const allProducts = (state.masterData?.san_pham || []).filter(p => {
+    if ((p.trang_thai || '').toLowerCase() !== 'active') return false;
+    const loai = (p.loai_thuong_hieu || '').toLowerCase();
+    return loai === 'own_brand' || loai === '';
+  });
+
+  puState.products = allProducts;
+  puState.inputs = {};
+  allProducts.forEach(p => {
+    puState.inputs[p.ma_san_pham] = {
+      status:           '', // 'tang_gia' | 'khong_tang' | 'chua_kd' | 'da_ngung'
+      gia_outlet_truoc: '',
+      gia_outlet_sau:   '',
+      gia_ntd_truoc:    '',
+      gia_ntd_sau:      '',
+      ngay_ap_dung:     '',
+      ghi_chu:          '',
+      _product:         p,
+    };
+  });
+
+  // Cập nhật header
+  document.getElementById('pu-list-event-name').textContent = evData.ten_su_kien;
+  const regionLabel = userChannel === 'GT'
+    ? (userRegion ? userRegion : userChannel)
+    : 'MT · ' + (u?.ten_hien_thi || '');
+  document.getElementById('pu-list-region-label').textContent = u?.ten_hien_thi + ' · ' + regionLabel;
+
+  puState.event = { ...evData, rows: puState.event.rows, kenh: userChannel, region: userRegion };
+
+  puRenderSkuList();
+  goTo('scr-pu-list');
+}
+
+// ── Lấy GT region của user theo Staff.khu_vuc ──
+function _puGetRegion() {
+  const u = state.user;
+  if (!u || (u.kenh || '').toUpperCase() !== 'GT') return null;
+  const kv = (u.khu_vuc || '').toLowerCase();
+  if (kv.includes('north')) return 'GT North';
+  if (kv.includes('south')) return 'GT South';
+  if (kv.includes('central')) return 'GT Central';
+  return null;
+}
+
+// ── Render toàn bộ SKU list ──
+function puRenderSkuList() {
+  const listEl  = document.getElementById('pu-sku-list');
+  const channel = puState.event?.kenh || 'GT';
+  const isGT    = channel === 'GT';
+
+  // Group by nhom_san_pham
+  const groups = {};
+  puState.products.forEach(p => {
+    const g = p.nhom_san_pham || 'Khác';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(p);
+  });
+
+  let html = '';
+  Object.entries(groups).forEach(([grp, prods]) => {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;padding:8px 2px 5px;">${grp}</div>`;
+    prods.forEach(p => {
+      html += puBuildSkuCard(p, isGT);
+    });
+  });
+
+  listEl.innerHTML = html;
+  puUpdateSummary();
+  document.getElementById('pu-summary-bar').style.display = 'flex';
+}
+
+// ── Build 1 SKU card ──
+function puBuildSkuCard(p, isGT) {
+  const id  = p.ma_san_pham;
+  const spec = [p.quy_cach_mac_dinh, p.don_vi, p.bao_bi].filter(Boolean).join(' ');
+
+  // Giá tham chiếu DGM từ Products sheet
+  const dgmRef = isGT
+    ? `<span>DGM→Agent: <strong>${p.gia_gt ? Number(p.gia_gt).toLocaleString('vi') + 'đ' : '—'}</strong></span>`
+    : `<span>DGM→MT: <strong>${p.gia_mt ? Number(p.gia_mt).toLocaleString('vi') + 'đ' : '—'}</strong></span>`;
+
+  // Price input fields theo kênh
+  const priceFields = isGT ? `
+    <div class="pu-section-divider">Giá Agent → Điểm bán (+VAT)</div>
+    <div class="pu-price-grid gt">
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Trước tăng</div>
+        <input type="number" id="pu-out-b-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_outlet_truoc',this.value)">
+      </div>
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Sau tăng <span class="req">*</span></div>
+        <input type="number" id="pu-out-a-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_outlet_sau',this.value)">
+      </div>
+    </div>
+    <div class="pu-section-divider">Giá NTD tại điểm bán (+VAT)</div>
+    <div class="pu-price-grid gt">
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Trước tăng</div>
+        <input type="number" id="pu-ntd-b-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_ntd_truoc',this.value)">
+      </div>
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Sau tăng</div>
+        <input type="number" id="pu-ntd-a-${id}" placeholder="0"
+          class="missing" id="pu-ntd-a-${id}"
+          oninput="puOnInput('${id}','gia_ntd_sau',this.value)">
+      </div>
+    </div>` : `
+    <div class="pu-section-divider">Giá kệ khách MT (+VAT)</div>
+    <div class="pu-price-grid mt">
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Trước tăng</div>
+        <input type="number" id="pu-out-b-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_outlet_truoc',this.value)">
+      </div>
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Sau tăng <span class="req">*</span></div>
+        <input type="number" id="pu-out-a-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_outlet_sau',this.value)">
+      </div>
+    </div>
+    <div class="pu-section-divider">Giá NTD tại kệ (+VAT)</div>
+    <div class="pu-price-grid mt">
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Trước tăng</div>
+        <input type="number" id="pu-ntd-b-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_ntd_truoc',this.value)">
+      </div>
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Sau tăng</div>
+        <input type="number" id="pu-ntd-a-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_ntd_sau',this.value)">
+      </div>
+    </div>`;
+
+  return `
+  <div class="pu-sku-card" id="pu-card-${id}">
+    <div class="pu-sku-header" onclick="puToggleBody('${id}')">
+      <div style="flex:1;min-width:0;">
+        <div class="pu-sku-name">${p.ten_san_pham}</div>
+        ${spec ? `<div style="font-size:11px;color:var(--gray);">${spec}</div>` : ''}
+      </div>
+      <span class="pu-sku-badge pending" id="pu-badge-${id}">Chưa điền</span>
+      <span style="color:var(--gray);font-size:16px;margin-left:6px;" id="pu-chev-${id}">›</span>
+    </div>
+    <div class="pu-sku-body" id="pu-body-${id}" style="display:none;">
+      <!-- DGM ref -->
+      <div class="pu-dgm-ref">${dgmRef}</div>
+
+      <!-- 4 status buttons -->
+      <div>
+        <div class="pu-field-label" style="margin-bottom:6px;">Trạng thái trong đợt này</div>
+        <div class="pu-status-row">
+          <button class="pu-status-btn" id="pu-st-tang-${id}"
+            onclick="puSetStatus('${id}','tang_gia')">🔴 Tăng giá</button>
+          <button class="pu-status-btn" id="pu-st-ktang-${id}"
+            onclick="puSetStatus('${id}','khong_tang')">⚪ Không tăng</button>
+          <button class="pu-status-btn" id="pu-st-ckd-${id}"
+            onclick="puSetStatus('${id}','chua_kd')">🚫 Chưa KD</button>
+          <button class="pu-status-btn" id="pu-st-ngung-${id}"
+            onclick="puSetStatus('${id}','da_ngung')">❌ Đã ngưng</button>
+        </div>
+      </div>
+
+      <!-- Price fields — chỉ hiện khi status = tang_gia hoặc khong_tang -->
+      <div id="pu-price-section-${id}" style="display:none;">
+        ${priceFields}
+        <div class="pu-date-wrap">
+          <div class="pu-field-label">Ngày khách áp dụng giá mới</div>
+          <input type="date" id="pu-date-${id}"
+            oninput="puOnInput('${id}','ngay_ap_dung',this.value)">
+        </div>
+        <div class="pu-input-wrap">
+          <div class="pu-field-label">Ghi chú</div>
+          <input type="text" id="pu-note-${id}" placeholder="Tuỳ chọn..."
+            oninput="puOnInput('${id}','ghi_chu',this.value)">
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Toggle body of a SKU card ──
+function puToggleBody(id) {
+  const body = document.getElementById('pu-body-' + id);
+  const chev = document.getElementById('pu-chev-' + id);
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  chev.textContent = isOpen ? '›' : '⌄';
+}
+
+// ── Set status cho 1 SKU ──
+function puSetStatus(id, status) {
+  const inp = puState.inputs[id];
+  if (!inp) return;
+
+  // Toggle off nếu click lại status đang chọn
+  const newStatus = inp.status === status ? '' : status;
+  inp.status = newStatus;
+
+  // Reset button styles
+  ['tang','ktang','ckd','ngung'].forEach(k => {
+    const b = document.getElementById(`pu-st-${k}-${id}`);
+    if (b) b.className = 'pu-status-btn';
+  });
+
+  // Apply active style
+  const keyMap = { tang_gia:'tang', khong_tang:'ktang', chua_kd:'ckd', da_ngung:'ngung' };
+  const clsMap = { tang_gia:'sel-tang', khong_tang:'sel-ktang', chua_kd:'sel-ckd', da_ngung:'sel-ngung' };
+  if (newStatus && keyMap[newStatus]) {
+    const b = document.getElementById(`pu-st-${keyMap[newStatus]}-${id}`);
+    if (b) b.className = 'pu-status-btn ' + clsMap[newStatus];
+  }
+
+  // Hiện/ẩn price fields
+  const priceSection = document.getElementById('pu-price-section-' + id);
+  if (priceSection) {
+    const showPrice = newStatus === 'tang_gia' || newStatus === 'khong_tang';
+    priceSection.style.display = showPrice ? 'block' : 'none';
+
+    // Nếu "không tăng" → pre-fill giá sau = giá trước (nếu đã có giá trước)
+    if (newStatus === 'khong_tang') {
+      const bEl = document.getElementById('pu-out-b-' + id);
+      const aEl = document.getElementById('pu-out-a-' + id);
+      if (bEl && aEl && bEl.value && !aEl.value) {
+        aEl.value = bEl.value;
+        inp.gia_outlet_sau = bEl.value;
+      }
+    }
+  }
+
+  puUpdateCard(id);
+  puUpdateSummary();
+}
+
+// ── Input handler ──
+function puOnInput(id, field, val) {
+  const inp = puState.inputs[id];
+  if (!inp) return;
+  inp[field] = val;
+
+  // Nếu "khong_tang" và nhập giá trước → auto copy sang giá sau
+  if (inp.status === 'khong_tang' && field === 'gia_outlet_truoc') {
+    const aEl = document.getElementById('pu-out-a-' + id);
+    if (aEl && !aEl.value) {
+      aEl.value = val;
+      inp.gia_outlet_sau = val;
+    }
+  }
+
+  // Update orange highlight cho ô ntd_sau
+  if (field === 'gia_ntd_sau') {
+    const el = document.getElementById('pu-ntd-a-' + id);
+    if (el) el.classList.toggle('missing', !val);
+  }
+
+  puUpdateCard(id);
+  puUpdateSummary();
+}
+
+// ── Cập nhật badge + border của 1 card ──
+function puUpdateCard(id) {
+  const inp   = puState.inputs[id];
+  const card  = document.getElementById('pu-card-' + id);
+  const badge = document.getElementById('pu-badge-' + id);
+  if (!inp || !card || !badge) return;
+
+  card.classList.remove('done','no-price','missing-ntd');
+  badge.className = 'pu-sku-badge';
+
+  if (!inp.status) {
+    badge.classList.add('pending');
+    badge.textContent = 'Chưa điền';
+    return;
+  }
+
+  if (inp.status === 'chua_kd') {
+    card.classList.add('no-price');
+    badge.classList.add('no-kd');
+    badge.textContent = '🚫 Chưa KD';
+    return;
+  }
+
+  if (inp.status === 'da_ngung') {
+    card.classList.add('no-price');
+    badge.classList.add('no-kd');
+    badge.textContent = '❌ Đã ngưng';
+    return;
+  }
+
+  if (inp.status === 'khong_tang') {
+    card.classList.add('done');
+    badge.classList.add('done');
+    badge.textContent = '⚪ Không tăng';
+    return;
+  }
+
+  // tang_gia
+  const hasOutletAfter = inp.gia_outlet_sau && Number(inp.gia_outlet_sau) > 0;
+  const hasNtdAfter    = inp.gia_ntd_sau && Number(inp.gia_ntd_sau) > 0;
+
+  if (!hasOutletAfter) {
+    badge.classList.add('pending');
+    badge.textContent = '🔴 Chưa có giá';
+    return;
+  }
+
+  if (hasOutletAfter && !hasNtdAfter) {
+    card.classList.add('missing-ntd');
+    badge.classList.add('warn');
+    badge.textContent = '⚠️ Thiếu NTD';
+    return;
+  }
+
+  card.classList.add('done');
+  badge.classList.add('done');
+  badge.textContent = '✅ ' + Number(inp.gia_outlet_sau).toLocaleString('vi') + 'đ';
+}
+
+// ── Cập nhật summary bar + progress bar ──
+function puUpdateSummary() {
+  const inputs = Object.values(puState.inputs);
+  const total  = inputs.length;
+  const filled = inputs.filter(x => x.status).length;
+  const tang   = inputs.filter(x => x.status === 'tang_gia').length;
+  const ktang  = inputs.filter(x => x.status === 'khong_tang').length;
+  const ckd    = inputs.filter(x => x.status === 'chua_kd' || x.status === 'da_ngung').length;
+  const missingNtd = inputs.filter(x =>
+    x.status === 'tang_gia' && x.gia_outlet_sau && !x.gia_ntd_sau
+  ).length;
+
+  // Progress bar
+  const pct = total ? Math.round(filled / total * 100) : 0;
+  const bar = document.getElementById('pu-list-prog-bar');
+  if (bar) bar.style.width = pct + '%';
+
+  const txt = document.getElementById('pu-list-prog-text');
+  if (txt) txt.textContent = `${filled} / ${total} SKU đã điền`;
+
+  const warnTxt = document.getElementById('pu-list-warn-count');
+  if (warnTxt) warnTxt.textContent = missingNtd ? `⚠️ ${missingNtd} thiếu NTD` : '';
+
+  // Summary counts
+  const cntDone = document.getElementById('pu-cnt-done');
+  if (cntDone) cntDone.textContent = filled + ' đã điền';
+  const e1 = document.getElementById('pu-cnt-tang'); if (e1) e1.textContent = tang;
+  const e2 = document.getElementById('pu-cnt-ktang'); if (e2) e2.textContent = ktang;
+  const e3 = document.getElementById('pu-cnt-ckd'); if (e3) e3.textContent = ckd;
+
+  // Missing NTD banner
+  const banner = document.getElementById('pu-missing-banner');
+  if (banner) banner.style.display = missingNtd ? 'block' : 'none';
+}
+
+// ── Submit price update ──
+async function submitPriceUpdate() {
+  const inputs  = puState.inputs;
+  const filled  = Object.values(inputs).filter(x => x.status);
+
+  if (!filled.length) {
+    showToast('⚠️ Chưa điền trạng thái cho mã nào', 'error');
+    return;
+  }
+
+  // Validate: tang_gia phải có gia_outlet_sau
+  const missingRequired = Object.entries(inputs).filter(([id, x]) =>
+    x.status === 'tang_gia' && (!x.gia_outlet_sau || Number(x.gia_outlet_sau) <= 0)
+  );
+  if (missingRequired.length) {
+    showToast(`⚠️ ${missingRequired.length} mã "Tăng giá" chưa có giá sau — vui lòng bổ sung`, 'error');
+    // Scroll to first missing
+    const firstId = missingRequired[0][0];
+    const card = document.getElementById('pu-card-' + firstId);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Open its body if closed
+      const body = document.getElementById('pu-body-' + firstId);
+      if (body && body.style.display === 'none') puToggleBody(firstId);
+    }
+    return;
+  }
+
+  showOverlay('Đang lưu...', 'Gửi dữ liệu giá tăng lên Google Sheets...');
+
+  const u = state.user;
+  const records = Object.entries(inputs)
+    .filter(([, x]) => x.status)
+    .map(([id, x]) => ({
+      ma_tang_gia:      puState.event?.ma_tang_gia || '',
+      ten_su_kien:      puState.event?.ten_su_kien || '',
+      kenh:             puState.event?.kenh || '',
+      gt_region:        puState.event?.region || '',
+      ma_san_pham:      id,
+      ten_san_pham:     x._product?.ten_san_pham || '',
+      status_san_pham:  x.status,               // tang_gia | khong_tang | chua_kd | da_ngung
+      gia_outlet_truoc: x.gia_outlet_truoc || '',
+      gia_outlet_sau:   x.gia_outlet_sau   || '',
+      gia_ntd_truoc:    x.gia_ntd_truoc    || '',
+      gia_ntd_sau:      x.gia_ntd_sau      || '',
+      ngay_ap_dung:     x.ngay_ap_dung     || '',
+      ghi_chu:          x.ghi_chu          || '',
+      ma_nhan_vien:     u?.ma_nhan_vien    || '',
+      ten_nhan_vien:    u?.ten_hien_thi    || u?.ho_ten || '',
+      ngay_nhap:        new Date().toISOString(),
+      trang_thai_duyet: 'pending',
+    }));
+
+  try {
+    const result = await apiPost({ action: 'submitPriceInputLog', data: records });
+    hideOverlay();
+
+    if (result.error) {
+      showToast('❌ Lỗi: ' + result.error, 'error');
+      return;
+    }
+
+    const savedCount  = result.count || records.length;
+    const missingNtd  = records.filter(r => r.status_san_pham === 'tang_gia' && !r.gia_ntd_sau).length;
+
+    document.getElementById('pu-success-detail').textContent =
+      `Đã lưu ${savedCount} mã · ${puState.event?.ten_su_kien || ''}`;
+    document.getElementById('pu-success-id').textContent =
+      missingNtd ? `⚠️ Còn ${missingNtd} mã chưa có giá NTD — nhớ bổ sung sau` : '✅ Đầy đủ thông tin';
+
+    goTo('scr-pu-success');
+  } catch(e) {
+    hideOverlay();
+    showToast('❌ Lỗi kết nối: ' + e.message, 'error');
+  }
+}
+</script>
+</body>
+</html>
