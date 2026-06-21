@@ -2106,6 +2106,20 @@ async function puSelectEvent(maTangGia) {
 }
 
 // ── Render danh sách khách hàng phụ trách ──
+// Bảng phân công MT dự phòng — dùng khi API chưa trả field "staff".
+// Keyed theo ma_diem_ban (ổn định). Khi API trả staff thì tự ưu tiên dùng API.
+const MT_STAFF_FALLBACK = {
+  MT001: 'Nguyen Hoang Thien Thanh', MT002: 'Ho Anh Tai',
+  MT003: 'Ho Anh Tai',               MT004: 'Nguyen Hoang Thien Thanh',
+  MT005: 'Ho Anh Tai',               MT006: 'Ho Anh Tai',
+  MT007: 'Nguyen Hoang Thien Thanh', MT008: 'Nguyen Hoang Thien Thanh',
+  MT009: 'Ho Anh Tai',               MT010: 'Nguyen Hoang Thien Thanh',
+  MT011: 'Ho Anh Tai',               MT012: 'Ho Anh Tai',
+  MT013: 'Ho Anh Tai',               MT014: 'Ho Anh Tai',
+  MT015: 'Ho Anh Tai',               MT016: 'Nguyen Hoang Thien Thanh',
+  MT017: 'Ho Anh Tai',
+};
+
 function puRenderCustomerList() {
   const listEl = document.getElementById('pu-customers-list');
   const u = state.user;
@@ -2120,9 +2134,10 @@ function puRenderCustomerList() {
     // Lọc theo kênh
     const oKenh = (o.kenh || '').toUpperCase();
     if (oKenh !== userChannel) return false;
-    // MT: lọc theo Staff (người phụ trách)
+    // MT: lọc theo Staff (người phụ trách) — ưu tiên API, fallback bảng nhúng
     if (userChannel === 'MT') {
-      return (o.staff || '').toLowerCase() === userName.toLowerCase();
+      const staffName = (o.staff || MT_STAFF_FALLBACK[o.ma_diem_ban] || '').toLowerCase();
+      return staffName === userName.toLowerCase();
     }
     // GT: lọc theo gt_region
     if (userChannel === 'GT' && userRegion) {
