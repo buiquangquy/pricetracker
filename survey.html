@@ -296,6 +296,24 @@ input[type=file] { display: none; }
 /* ── PRICE UPDATE MODULE ── */
 .action-icon.green { background: rgba(16,185,129,0.1); }
 
+/* Customer selector */
+.pu-cust-card {
+  background: white; border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  cursor: pointer; transition: all 0.15s;
+  box-shadow: var(--shadow);
+}
+.pu-cust-card:active { transform: scale(0.98); }
+.pu-cust-card .cust-icon {
+  width: 38px; height: 38px; border-radius: 9px;
+  background: rgba(27,58,87,0.08); display: grid;
+  place-items: center; font-size: 18px; flex-shrink: 0;
+}
+.pu-cust-card .cust-name { font-size: 14px; font-weight: 700; color: var(--navy); }
+.pu-cust-card .cust-meta { font-size: 11px; color: var(--gray); margin-top: 2px; }
+.pu-cust-card .cust-arrow { color: var(--gray); font-size: 18px; margin-left: auto; }
+
 /* Event selector cards */
 .pu-event-card {
   background: white; border: 1.5px solid var(--border); border-radius: var(--radius);
@@ -824,15 +842,40 @@ input[type=file] { display: none; }
   </div>
 </div>
 
+<!-- SCREEN PU-1B: CHỌN KHÁCH HÀNG PHỤ TRÁCH -->
+<div id="scr-pu-customers" class="screen" style="background:#f8f9fa;">
+  <div class="app-header">
+    <button class="back-btn" onclick="goTo('scr-pu-events')">← Đợt tăng giá</button>
+    <div>
+      <div style="color:white;font-size:15px;font-weight:700;" id="pu-cust-event-name">--</div>
+      <div style="color:rgba(255,255,255,0.6);font-size:11px;" id="pu-cust-user-label">--</div>
+    </div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;">
+    <div style="font-size:12px;color:var(--gray);padding:2px 0 8px;">
+      Chọn khách hàng để cập nhật giá. Mỗi khách sẽ có giá NTD riêng.
+    </div>
+    <!-- Progress tổng: bao nhiêu khách đã điền xong -->
+    <div id="pu-cust-progress" style="display:none;" class="pu-summary-bar">
+      <span style="font-size:12px;color:var(--navy);">Tiến độ</span>
+      <strong style="color:var(--red);" id="pu-cust-progress-text">0 / 0 khách</strong>
+    </div>
+    <div id="pu-customers-list">
+      <div style="text-align:center;padding:40px;color:#9ca3af;">Đang tải...</div>
+    </div>
+  </div>
+</div>
+
 <!-- SCREEN PU-2: DANH SÁCH SKU -->
 <div id="scr-pu-list" class="screen" style="background:#f8f9fa;">
   <!-- Header + progress -->
   <div class="app-header" style="flex-direction:column;align-items:stretch;gap:0;padding-bottom:10px;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <button class="back-btn" onclick="goTo('scr-pu-events')">← Đợt khác</button>
+      <button class="back-btn" onclick="goTo('scr-pu-customers')">← Chọn khách</button>
       <div style="flex:1;min-width:0;">
         <div style="color:white;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="pu-list-event-name">--</div>
         <div style="color:rgba(255,255,255,0.6);font-size:11px;" id="pu-list-region-label">--</div>
+        <div style="color:rgba(255,255,255,0.8);font-size:12px;font-weight:600;margin-top:2px;" id="pu-list-cust-label">--</div>
       </div>
     </div>
     <div class="pu-prog-bar-wrap">
@@ -877,7 +920,7 @@ input[type=file] { display: none; }
   <div style="color:rgba(255,255,255,0.6);font-size:13px;" id="pu-success-detail">Dữ liệu đã đồng bộ lên Google Sheets</div>
   <div class="success-id" id="pu-success-id"></div>
   <div class="success-actions">
-    <button class="success-btn primary" onclick="goTo('scr-pu-events'); puLoadEvents();">📋 Xem đợt khác</button>
+    <button class="success-btn primary" onclick="goTo('scr-pu-customers'); puRenderCustomerList();">📋 Khách tiếp theo</button>
     <button class="success-btn secondary" onclick="goTo('scr-home')">🏠 Trang chủ</button>
   </div>
 </div>
@@ -1915,17 +1958,621 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ════════════════════════════════════════════
-// PRICE UPDATE MODULE
+// PRICE UPDATE MODULE — v2 (customer-first flow)
+// Flow: Chọn đợt → Chọn khách → Nhập giá SKU → Submit
+// MT: DGM → Khách MT → NTD
+// GT: DGM → Agent → Điểm bán → NTD
 // ════════════════════════════════════════════
 
-// PU state — hoàn toàn tách biệt với survey state
 const puState = {
-  event:      null,   // { ma_tang_gia, ten_su_kien, kenh, ... }
-  products:   [],     // danh sách SP active filtered cho event + user
-  inputs:     {},     // keyed by ma_san_pham — { status, gia_outlet_truoc, gia_outlet_sau, gia_ntd_truoc, gia_ntd_sau, ngay_ap_dung, ghi_chu }
-  // MT flow: DGM → Khách MT → NTD
-  // GT flow: DGM → Agent → Outlet/Điểm bán → NTD
+  event:      null,   // event object hiện tại
+  customer:   null,   // { ma_diem_ban, ten_diem_ban, kenh, loai_diem_ban, gt_region, agent_phu_trach }
+  products:   [],     // danh sách SKU active own_brand
+  inputs:     {},     // keyed by ma_san_pham
+  custDone:   {},     // keyed by ten_diem_ban → true nếu đã submit
 };
+
+// ── Hiện/ẩn action card theo chức danh user ──
+function _puToggleHomeCard() {
+  const card = document.getElementById('action-price-update');
+  if (!card) return;
+  const role = (state.user?.chuc_danh || '').toLowerCase();
+  const show = role.includes('representative') || role.includes('manager');
+  card.style.display = show ? 'flex' : 'none';
+}
+
+// ── Entry point từ Home ──
+function startPriceUpdate() {
+  puState.custDone = {};
+  goTo('scr-pu-events');
+  puLoadEvents();
+}
+
+// ════════════════════════════════════════════
+// SCREEN 1: Load danh sách đợt tăng giá
+// ════════════════════════════════════════════
+async function puLoadEvents() {
+  const listEl  = document.getElementById('pu-events-list');
+  const userLbl = document.getElementById('pu-events-user-label');
+  const u = state.user;
+  const userChannel = (u?.kenh || '').toUpperCase();
+  const userRegion  = u?.khu_vuc || '';
+
+  userLbl.textContent = (u?.ten_hien_thi || '--') + ' · ' + userChannel
+    + (userRegion && userRegion !== 'Nationwide' ? ' · ' + userRegion : '');
+
+  listEl.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af;">
+    <div class="spinner" style="margin:0 auto 12px;border-top-color:var(--navy);"></div>Đang tải...</div>`;
+
+  try {
+    const data = await apiFetch({ action: 'getPriceEvents' });
+    const events = (data.price_events || []).filter(e => {
+      if ((e.trang_thai || '').toLowerCase() !== 'active') return false;
+      const evKenh = (e.kenh || '').toUpperCase();
+      if (userChannel === 'MT' && evKenh !== 'MT') return false;
+      if (userChannel === 'GT' && evKenh !== 'GT') return false;
+      return true;
+    });
+
+    if (!events.length) {
+      listEl.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af;">✅ Không có đợt tăng giá đang active</div>`;
+      return;
+    }
+
+    const grouped = {};
+    events.forEach(e => {
+      if (!grouped[e.ma_tang_gia]) grouped[e.ma_tang_gia] = { ...e, sp_count: 0 };
+      grouped[e.ma_tang_gia].sp_count++;
+    });
+
+    listEl.innerHTML = Object.values(grouped).map(ev => {
+      const dateStr = ev.ngay_dgm_ap_dung
+        ? new Date(ev.ngay_dgm_ap_dung).toLocaleDateString('vi-VN') : '—';
+      return `<div class="pu-event-card" onclick="puSelectEvent('${ev.ma_tang_gia}')">
+        <div class="pu-event-name">${ev.ten_su_kien}</div>
+        <div class="pu-event-meta">
+          <span class="pu-event-badge">${ev.kenh}</span>
+          <span>📅 Áp dụng: ${dateStr}</span>
+          <span>📦 ${ev.sp_count} SKU trong đợt</span>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    listEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--red);">
+      ❌ Lỗi tải dữ liệu<br><small>${e.message}</small><br>
+      <button style="margin-top:10px;background:var(--navy);color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;" onclick="puLoadEvents()">🔄 Thử lại</button>
+    </div>`;
+  }
+}
+
+// ════════════════════════════════════════════
+// SCREEN 2: Sau khi chọn đợt → hiện danh sách KHÁCH HÀNG
+// ════════════════════════════════════════════
+async function puSelectEvent(maTangGia) {
+  const u = state.user;
+  const userChannel = (u?.kenh || '').toUpperCase();
+
+  // Load event data
+  try {
+    const res = await apiFetch({ action: 'getPriceEvents' });
+    const allEvents = res.price_events || [];
+    const evRows = allEvents.filter(e => e.ma_tang_gia === maTangGia);
+    if (!evRows.length) { showToast('❌ Không tìm thấy đợt tăng giá', 'error'); return; }
+    puState.event = { ...evRows[0], rows: evRows, kenh: userChannel };
+  } catch(e) {
+    showToast('❌ Lỗi: ' + e.message, 'error'); return;
+  }
+
+  // Lưu products
+  puState.products = (state.masterData?.san_pham || []).filter(p =>
+    (p.trang_thai || '').toLowerCase() === 'active' &&
+    (p.loai_thuong_hieu || '').toLowerCase().includes('own_brand')
+  );
+
+  // Hiện màn chọn khách
+  document.getElementById('pu-cust-event-name').textContent = puState.event.ten_su_kien;
+  document.getElementById('pu-cust-user-label').textContent =
+    (u?.ten_hien_thi || '') + ' · ' + userChannel;
+
+  puRenderCustomerList();
+  goTo('scr-pu-customers');
+}
+
+// ── Render danh sách khách hàng phụ trách ──
+function puRenderCustomerList() {
+  const listEl = document.getElementById('pu-customers-list');
+  const u = state.user;
+  const userName = u?.ten_hien_thi || u?.ho_ten || '';
+  const userChannel = (u?.kenh || '').toUpperCase();
+  const userRegion  = _puGetRegion(); // 'GT North' | 'GT South' | 'GT Central' | null
+
+  // Lọc outlets thuộc user này từ masterData
+  const allOutlets = state.masterData?.diem_ban || [];
+  const myOutlets = allOutlets.filter(o => {
+    if ((o.trang_thai || '').toLowerCase() === 'inactive') return false;
+    // Lọc theo kênh
+    const oKenh = (o.kenh || '').toUpperCase();
+    if (oKenh !== userChannel) return false;
+    // MT: lọc theo Staff (người phụ trách)
+    if (userChannel === 'MT') {
+      return (o.staff || '').toLowerCase() === userName.toLowerCase();
+    }
+    // GT: lọc theo gt_region
+    if (userChannel === 'GT' && userRegion) {
+      return (o.gt_region || '') === userRegion;
+    }
+    return false;
+  })
+  // Bỏ qua dòng loại Agent (chỉ lấy điểm bán thực tế)
+  .filter(o => (o.loai_diem_ban || '').toLowerCase() !== 'agent');
+
+  if (!myOutlets.length) {
+    listEl.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af;">
+      ⚠️ Không tìm thấy khách hàng phụ trách.<br>
+      <small>Kiểm tra cột Staff trong sheet Outlets</small></div>`;
+    return;
+  }
+
+  // Progress bar
+  const doneCount = myOutlets.filter(o => puState.custDone[o.ten_diem_ban]).length;
+  const progEl  = document.getElementById('pu-cust-progress');
+  const progTxt = document.getElementById('pu-cust-progress-text');
+  if (progEl) { progEl.style.display = 'flex'; }
+  if (progTxt) progTxt.textContent = `${doneCount} / ${myOutlets.length} khách đã lưu`;
+
+  const iconMap = { 'Supermarket':'🏬', 'Hypermarket':'🏪', 'Mini-mart':'🏪', 'Chợ':'🛒', 'Tạp hoá':'🏠' };
+
+  listEl.innerHTML = myOutlets.map(o => {
+    const isDone  = puState.custDone[o.ten_diem_ban];
+    const icon    = iconMap[o.loai_diem_ban] || (userChannel === 'MT' ? '🏬' : '🏪');
+    const meta    = userChannel === 'GT'
+      ? `${o.gt_region || ''} · Agent: ${o.agent_phu_trach || '—'} · ${o.loai_diem_ban || ''}`
+      : (o.format_mt || o.loai_diem_ban || '');
+    const doneTag = isDone
+      ? `<span style="font-size:10px;font-weight:700;color:#065f46;background:rgba(16,185,129,0.12);padding:2px 8px;border-radius:6px;flex-shrink:0;">✅ Đã lưu</span>`
+      : '';
+    return `<div class="pu-cust-card" onclick="puSelectCustomer('${o.ma_diem_ban}')"
+      style="${isDone ? 'opacity:0.7;' : ''}">
+      <div class="cust-icon">${icon}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="cust-name">${o.ten_diem_ban}</div>
+        ${meta ? `<div class="cust-meta">${meta}</div>` : ''}
+      </div>
+      ${doneTag}
+      <div class="cust-arrow">›</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════
+// SCREEN 3: Sau khi chọn khách → nhập giá SKU
+// ════════════════════════════════════════════
+function puSelectCustomer(maDiemBan) {
+  const allOutlets = state.masterData?.diem_ban || [];
+  const outlet = allOutlets.find(o => o.ma_diem_ban === maDiemBan);
+  if (!outlet) { showToast('❌ Không tìm thấy khách hàng', 'error'); return; }
+
+  puState.customer = outlet;
+
+  // Reset inputs cho khách mới
+  puState.inputs = {};
+  puState.products.forEach(p => {
+    puState.inputs[p.ma_san_pham] = {
+      status:           '',
+      gia_dgm_truoc:    '',  // DGM → Agent (GT) hoặc DGM → chain (MT)
+      gia_dgm_sau:      '',
+      gia_outlet_truoc: '',  // Agent → điểm bán (GT only)
+      gia_outlet_sau:   '',
+      gia_ntd_truoc:    '',  // NTD
+      gia_ntd_sau:      '',
+      ngay_ap_dung:     '',
+      ghi_chu:          '',
+      _product:         p,
+    };
+  });
+
+  // Update header labels
+  const u = state.user;
+  document.getElementById('pu-list-event-name').textContent = puState.event.ten_su_kien;
+  document.getElementById('pu-list-region-label').textContent = u?.ten_hien_thi || '';
+  document.getElementById('pu-list-cust-label').textContent  = '🏬 ' + outlet.ten_diem_ban;
+
+  puRenderSkuList();
+  goTo('scr-pu-list');
+}
+
+// ── Lấy GT region của user ──
+function _puGetRegion() {
+  const u = state.user;
+  if (!u || (u.kenh || '').toUpperCase() !== 'GT') return null;
+  const kv = (u.khu_vuc || '').toLowerCase();
+  if (kv.includes('north'))   return 'GT North';
+  if (kv.includes('south'))   return 'GT South';
+  if (kv.includes('central')) return 'GT Central';
+  return null;
+}
+
+// ── Render SKU list ──
+function puRenderSkuList() {
+  const listEl  = document.getElementById('pu-sku-list');
+  const channel = puState.event?.kenh || 'MT';
+  const isGT    = channel === 'GT';
+
+  const groups = {};
+  puState.products.forEach(p => {
+    const g = p.nhom_san_pham || 'Khác';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(p);
+  });
+
+  let html = '';
+  Object.entries(groups).forEach(([grp, prods]) => {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;padding:8px 2px 5px;">${grp}</div>`;
+    prods.forEach(p => { html += puBuildSkuCard(p, isGT); });
+  });
+
+  listEl.innerHTML = html;
+  puUpdateSummary();
+  document.getElementById('pu-summary-bar').style.display = 'flex';
+}
+
+// ── Build 1 SKU card — price fields theo đúng flow kênh ──
+function puBuildSkuCard(p, isGT) {
+  const id   = p.ma_san_pham;
+  const spec = [p.quy_cach_mac_dinh, p.don_vi, p.bao_bi].filter(Boolean).join(' ');
+  const outlet = puState.customer;
+  const agentName = outlet?.agent_phu_trach || '—';
+
+  // DGM ref price
+  const dgmRefVal = isGT
+    ? (p.gia_gt ? Number(p.gia_gt).toLocaleString('vi') + 'đ' : '—')
+    : (p.gia_mt ? Number(p.gia_mt).toLocaleString('vi') + 'đ' : '—');
+  const dgmRefLabel = isGT ? `DGM → Agent (${agentName})` : 'DGM → ' + (outlet?.ten_diem_ban || 'MT');
+  const dgmRef = `<span>${dgmRefLabel}: <strong>${dgmRefVal}</strong></span>`;
+
+  // Price fields
+  let priceFields = '';
+  if (isGT) {
+    // GT: DGM → Agent → Điểm bán → NTD
+    priceFields = `
+    <div class="pu-section-divider">DGM → Agent (${agentName}) (+VAT)</div>
+    <div class="pu-price-grid gt">
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Trước tăng</div>
+        <input type="number" id="pu-dgm-b-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_dgm_truoc',this.value)">
+      </div>
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Sau tăng <span class="req">*</span></div>
+        <input type="number" id="pu-dgm-a-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_dgm_sau',this.value)">
+      </div>
+    </div>
+    <div class="pu-section-divider">Agent → Điểm bán (+VAT)</div>
+    <div class="pu-price-grid gt">
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Trước tăng</div>
+        <input type="number" id="pu-out-b-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_outlet_truoc',this.value)">
+      </div>
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Sau tăng <span class="req">*</span></div>
+        <input type="number" id="pu-out-a-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_outlet_sau',this.value)">
+      </div>
+    </div>
+    <div class="pu-section-divider">Giá NTD (+VAT)</div>
+    <div class="pu-price-grid gt">
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Trước tăng</div>
+        <input type="number" id="pu-ntd-b-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_ntd_truoc',this.value)">
+      </div>
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Sau tăng</div>
+        <input type="number" id="pu-ntd-a-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_ntd_sau',this.value)">
+      </div>
+    </div>`;
+  } else {
+    // MT: DGM → Khách MT → NTD
+    priceFields = `
+    <div class="pu-section-divider">DGM → ${outlet?.ten_diem_ban || 'Khách MT'} (+VAT)</div>
+    <div class="pu-price-grid mt">
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Trước tăng</div>
+        <input type="number" id="pu-dgm-b-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_dgm_truoc',this.value)">
+      </div>
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Sau tăng <span class="req">*</span></div>
+        <input type="number" id="pu-dgm-a-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_dgm_sau',this.value)">
+      </div>
+    </div>
+    <div class="pu-section-divider">Giá NTD tại kệ (+VAT)</div>
+    <div class="pu-price-grid mt">
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Trước tăng</div>
+        <input type="number" id="pu-ntd-b-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_ntd_truoc',this.value)">
+      </div>
+      <div class="pu-input-wrap">
+        <div class="pu-field-label">Sau tăng</div>
+        <input type="number" id="pu-ntd-a-${id}" placeholder="0"
+          oninput="puOnInput('${id}','gia_ntd_sau',this.value)">
+      </div>
+    </div>`;
+  }
+
+  return `
+  <div class="pu-sku-card" id="pu-card-${id}">
+    <div class="pu-sku-header" onclick="puToggleBody('${id}')">
+      <div style="flex:1;min-width:0;">
+        <div class="pu-sku-name">${p.ten_san_pham}</div>
+        ${spec ? `<div style="font-size:11px;color:var(--gray);">${spec}</div>` : ''}
+      </div>
+      <span class="pu-sku-badge pending" id="pu-badge-${id}">Chưa điền</span>
+      <span style="color:var(--gray);font-size:16px;margin-left:6px;" id="pu-chev-${id}">›</span>
+    </div>
+    <div class="pu-sku-body" id="pu-body-${id}" style="display:none;">
+      <div class="pu-dgm-ref">${dgmRef}</div>
+      <div>
+        <div class="pu-field-label" style="margin-bottom:6px;">Trạng thái trong đợt này</div>
+        <div class="pu-status-row">
+          <button class="pu-status-btn" id="pu-st-tang-${id}"
+            onclick="puSetStatus('${id}','tang_gia')">🔴 Tăng giá</button>
+          <button class="pu-status-btn" id="pu-st-ktang-${id}"
+            onclick="puSetStatus('${id}','khong_tang')">⚪ Không tăng</button>
+          <button class="pu-status-btn" id="pu-st-ckd-${id}"
+            onclick="puSetStatus('${id}','chua_kd')">🚫 Chưa KD</button>
+          <button class="pu-status-btn" id="pu-st-ngung-${id}"
+            onclick="puSetStatus('${id}','da_ngung')">❌ Đã ngưng</button>
+        </div>
+      </div>
+      <div id="pu-price-section-${id}" style="display:none;">
+        ${priceFields}
+        <div class="pu-date-wrap">
+          <div class="pu-field-label">Ngày khách áp dụng giá mới</div>
+          <input type="date" id="pu-date-${id}"
+            oninput="puOnInput('${id}','ngay_ap_dung',this.value)">
+        </div>
+        <div class="pu-input-wrap">
+          <div class="pu-field-label">Ghi chú</div>
+          <input type="text" id="pu-note-${id}" placeholder="Tuỳ chọn..."
+            oninput="puOnInput('${id}','ghi_chu',this.value)">
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Toggle body ──
+function puToggleBody(id) {
+  const body = document.getElementById('pu-body-' + id);
+  const chev = document.getElementById('pu-chev-' + id);
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  chev.textContent = isOpen ? '›' : '⌄';
+}
+
+// ── Set status ──
+function puSetStatus(id, status) {
+  const inp = puState.inputs[id];
+  if (!inp) return;
+  const newStatus = inp.status === status ? '' : status;
+  inp.status = newStatus;
+
+  ['tang','ktang','ckd','ngung'].forEach(k => {
+    const b = document.getElementById(`pu-st-${k}-${id}`);
+    if (b) b.className = 'pu-status-btn';
+  });
+  const keyMap = { tang_gia:'tang', khong_tang:'ktang', chua_kd:'ckd', da_ngung:'ngung' };
+  const clsMap = { tang_gia:'sel-tang', khong_tang:'sel-ktang', chua_kd:'sel-ckd', da_ngung:'sel-ngung' };
+  if (newStatus && keyMap[newStatus]) {
+    const b = document.getElementById(`pu-st-${keyMap[newStatus]}-${id}`);
+    if (b) b.className = 'pu-status-btn ' + clsMap[newStatus];
+  }
+
+  const priceSection = document.getElementById('pu-price-section-' + id);
+  if (priceSection) {
+    const showPrice = newStatus === 'tang_gia' || newStatus === 'khong_tang';
+    priceSection.style.display = showPrice ? 'block' : 'none';
+
+    // Không tăng → auto copy giá trước sang sau
+    if (newStatus === 'khong_tang') {
+      ['dgm','out','ntd'].forEach(prefix => {
+        const bEl = document.getElementById(`pu-${prefix}-b-${id}`);
+        const aEl = document.getElementById(`pu-${prefix}-a-${id}`);
+        if (bEl && aEl && bEl.value && !aEl.value) {
+          aEl.value = bEl.value;
+          const fieldMap = { dgm:'gia_dgm_sau', out:'gia_outlet_sau', ntd:'gia_ntd_sau' };
+          inp[fieldMap[prefix]] = bEl.value;
+        }
+      });
+    }
+  }
+
+  puUpdateCard(id);
+  puUpdateSummary();
+}
+
+// ── Input handler ──
+function puOnInput(id, field, val) {
+  const inp = puState.inputs[id];
+  if (!inp) return;
+  inp[field] = val;
+
+  // Không tăng: auto copy giá trước → sau
+  if (inp.status === 'khong_tang') {
+    const pairs = {
+      gia_dgm_truoc: ['gia_dgm_sau', `pu-dgm-a-${id}`],
+      gia_outlet_truoc: ['gia_outlet_sau', `pu-out-a-${id}`],
+      gia_ntd_truoc: ['gia_ntd_sau', `pu-ntd-a-${id}`],
+    };
+    if (pairs[field]) {
+      const [destField, destId] = pairs[field];
+      const destEl = document.getElementById(destId);
+      if (destEl && !destEl.value) { destEl.value = val; inp[destField] = val; }
+    }
+  }
+
+  // Highlight missing NTD sau
+  if (field === 'gia_ntd_sau') {
+    const el = document.getElementById('pu-ntd-a-' + id);
+    if (el) el.classList.toggle('missing', !val);
+  }
+
+  puUpdateCard(id);
+  puUpdateSummary();
+}
+
+// ── Cập nhật badge + border 1 card ──
+function puUpdateCard(id) {
+  const inp   = puState.inputs[id];
+  const card  = document.getElementById('pu-card-' + id);
+  const badge = document.getElementById('pu-badge-' + id);
+  if (!inp || !card || !badge) return;
+
+  card.classList.remove('done','no-price','missing-ntd');
+  badge.className = 'pu-sku-badge';
+
+  if (!inp.status) {
+    badge.classList.add('pending'); badge.textContent = 'Chưa điền'; return;
+  }
+  if (inp.status === 'chua_kd') {
+    card.classList.add('no-price'); badge.classList.add('no-kd'); badge.textContent = '🚫 Chưa KD'; return;
+  }
+  if (inp.status === 'da_ngung') {
+    card.classList.add('no-price'); badge.classList.add('no-kd'); badge.textContent = '❌ Đã ngưng'; return;
+  }
+  if (inp.status === 'khong_tang') {
+    card.classList.add('done'); badge.classList.add('done'); badge.textContent = '⚪ Không tăng'; return;
+  }
+
+  // tang_gia: cần ít nhất giá DGM sau
+  const hasDgmAfter = inp.gia_dgm_sau && Number(inp.gia_dgm_sau) > 0;
+  const hasNtdAfter = inp.gia_ntd_sau && Number(inp.gia_ntd_sau) > 0;
+
+  if (!hasDgmAfter) {
+    badge.classList.add('pending'); badge.textContent = '🔴 Chưa có giá'; return;
+  }
+  if (!hasNtdAfter) {
+    card.classList.add('missing-ntd'); badge.classList.add('warn'); badge.textContent = '⚠️ Thiếu NTD'; return;
+  }
+  card.classList.add('done'); badge.classList.add('done');
+  badge.textContent = '✅ ' + Number(inp.gia_dgm_sau).toLocaleString('vi') + 'đ';
+}
+
+// ── Cập nhật progress bar + summary ──
+function puUpdateSummary() {
+  const inputs = Object.values(puState.inputs);
+  const total  = inputs.length;
+  const filled = inputs.filter(x => x.status).length;
+  const tang   = inputs.filter(x => x.status === 'tang_gia').length;
+  const ktang  = inputs.filter(x => x.status === 'khong_tang').length;
+  const ckd    = inputs.filter(x => x.status === 'chua_kd' || x.status === 'da_ngung').length;
+  const missingNtd = inputs.filter(x =>
+    x.status === 'tang_gia' && x.gia_dgm_sau && !x.gia_ntd_sau
+  ).length;
+
+  const pct = total ? Math.round(filled / total * 100) : 0;
+  const bar = document.getElementById('pu-list-prog-bar');
+  if (bar) bar.style.width = pct + '%';
+  const txt = document.getElementById('pu-list-prog-text');
+  if (txt) txt.textContent = `${filled} / ${total} SKU đã điền`;
+  const warnTxt = document.getElementById('pu-list-warn-count');
+  if (warnTxt) warnTxt.textContent = missingNtd ? `⚠️ ${missingNtd} thiếu NTD` : '';
+
+  const cntDone = document.getElementById('pu-cnt-done'); if (cntDone) cntDone.textContent = filled + ' đã điền';
+  const e1 = document.getElementById('pu-cnt-tang');  if (e1) e1.textContent = tang;
+  const e2 = document.getElementById('pu-cnt-ktang'); if (e2) e2.textContent = ktang;
+  const e3 = document.getElementById('pu-cnt-ckd');   if (e3) e3.textContent = ckd;
+
+  const banner = document.getElementById('pu-missing-banner');
+  if (banner) banner.style.display = missingNtd ? 'block' : 'none';
+}
+
+// ── Submit price update cho 1 khách ──
+async function submitPriceUpdate() {
+  const inputs  = puState.inputs;
+  const filled  = Object.values(inputs).filter(x => x.status);
+  const outlet  = puState.customer;
+
+  if (!filled.length) {
+    showToast('⚠️ Chưa điền trạng thái cho mã nào', 'error'); return;
+  }
+
+  // Validate: tang_gia phải có gia_dgm_sau
+  const missingRequired = Object.entries(inputs).filter(([, x]) =>
+    x.status === 'tang_gia' && (!x.gia_dgm_sau || Number(x.gia_dgm_sau) <= 0)
+  );
+  if (missingRequired.length) {
+    showToast(`⚠️ ${missingRequired.length} mã "Tăng giá" chưa có giá sau`, 'error');
+    const firstId = missingRequired[0][0];
+    const card = document.getElementById('pu-card-' + firstId);
+    if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    const body = document.getElementById('pu-body-' + firstId);
+    if (body && body.style.display === 'none') puToggleBody(firstId);
+    return;
+  }
+
+  showOverlay('Đang lưu...', 'Gửi dữ liệu lên Google Sheets...');
+
+  const u = state.user;
+  const isGT = (puState.event?.kenh || '').toUpperCase() === 'GT';
+
+  const records = Object.entries(inputs)
+    .filter(([, x]) => x.status)
+    .map(([id, x]) => ({
+      ma_tang_gia:      puState.event?.ma_tang_gia   || '',
+      ten_su_kien:      puState.event?.ten_su_kien   || '',
+      kenh:             puState.event?.kenh           || '',
+      gt_region:        isGT ? (_puGetRegion() || '') : '',
+      ma_diem_ban:      outlet?.ma_diem_ban           || '',
+      ten_diem_ban:     outlet?.ten_diem_ban          || '',
+      agent_phu_trach:  outlet?.agent_phu_trach       || '',
+      ma_san_pham:      id,
+      ten_san_pham:     x._product?.ten_san_pham     || '',
+      status_san_pham:  x.status,
+      // Giá theo flow: DGM → (Agent→Outlet GT / Chain MT) → NTD
+      gia_dgm_truoc:    x.gia_dgm_truoc   || '',
+      gia_dgm_sau:      x.gia_dgm_sau     || '',
+      gia_outlet_truoc: x.gia_outlet_truoc || '',  // GT only: agent→điểm bán
+      gia_outlet_sau:   x.gia_outlet_sau   || '',
+      gia_ntd_truoc:    x.gia_ntd_truoc   || '',
+      gia_ntd_sau:      x.gia_ntd_sau     || '',
+      ngay_ap_dung:     x.ngay_ap_dung    || '',
+      ghi_chu:          x.ghi_chu         || '',
+      ma_nhan_vien:     u?.ma_nhan_vien   || '',
+      ten_nhan_vien:    u?.ten_hien_thi   || '',
+      ngay_nhap:        new Date().toISOString(),
+      trang_thai_duyet: 'pending',
+    }));
+
+  try {
+    const result = await apiPost({ action: 'submitPriceInputLog', data: records });
+    hideOverlay();
+
+    if (result.error) { showToast('❌ Lỗi: ' + result.error, 'error'); return; }
+
+    // Đánh dấu khách này đã xong
+    puState.custDone[outlet.ten_diem_ban] = true;
+
+    const savedCount = result.count || records.length;
+    const missingNtd = records.filter(r => r.status_san_pham === 'tang_gia' && !r.gia_ntd_sau).length;
+
+    document.getElementById('pu-success-detail').textContent =
+      `${outlet.ten_diem_ban} · ${savedCount} mã · ${puState.event?.ten_su_kien || ''}`;
+    document.getElementById('pu-success-id').textContent =
+      missingNtd ? `⚠️ Còn ${missingNtd} mã chưa có giá NTD` : '✅ Đầy đủ thông tin';
+
+    goTo('scr-pu-success');
+  } catch(e) {
+    hideOverlay();
+    showToast('❌ Lỗi kết nối: ' + e.message, 'error');
+  }
+}
 
 // ── Hiện/ẩn action card theo chức danh user ──
 function _puToggleHomeCard() {
