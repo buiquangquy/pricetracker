@@ -2203,6 +2203,7 @@ function puSelectCustomer(maDiemBan) {
       status:           '',
       gia_dgm_truoc:    '',  // DGM → Agent (GT) hoặc DGM → chain (MT)
       gia_dgm_sau:      '',
+      chi_phi_km:       '',  // MT only — tổng chi phí KM để tăng giá
       gia_outlet_truoc: '',  // Agent → điểm bán (GT only)
       gia_outlet_sau:   '',
       gia_ntd_truoc:    '',  // NTD
@@ -2344,6 +2345,12 @@ function puBuildSkuCard(p, isGT) {
         <input type="number" id="pu-ntd-a-${id}" placeholder="0"
           oninput="puOnInput('${id}','gia_ntd_sau',this.value)">
       </div>
+    </div>
+    <div class="pu-section-divider">Chi phí KM để tăng giá (+VAT)</div>
+    <div class="pu-input-wrap">
+      <div class="pu-field-label">Tổng chi phí KM đã chạy <span style="font-size:10px;color:#9ca3af;font-weight:400;">— để trống nếu không cần KM</span></div>
+      <input type="number" id="pu-km-${id}" placeholder="0"
+        oninput="puOnInput('${id}','chi_phi_km',this.value)">
     </div>`;
   }
 
@@ -2584,6 +2591,7 @@ async function submitPriceUpdate() {
       gia_outlet_sau:   x.gia_outlet_sau   || '',
       gia_ntd_truoc:    x.gia_ntd_truoc   || '',
       gia_ntd_sau:      x.gia_ntd_sau     || '',
+      chi_phi_km:       isGT ? '' : (x.chi_phi_km || ''),  // MT only
       ngay_ap_dung:     x.ngay_ap_dung    || '',
       ghi_chu:          x.ghi_chu         || '',
       ma_nhan_vien:     u?.ma_nhan_vien   || '',
