@@ -289,6 +289,7 @@ table.mtx tbody td { border-bottom: 1px solid #F0EDE6; text-align: center; heigh
 <div class="tabnav">
   <div class="tabnav-inner" id="tabnav">
     <button class="tab active" data-view="v-overview">📊 Phân phối &amp; Margin</button>
+    <button class="tab" data-view="v-catalog">📒 Danh mục &amp; Giá</button>
     <button class="tab" data-view="v-priceinc">📈 Tiến độ ngấm giá</button>
     <button class="tab" data-view="v-health">⚔️ Sức khoẻ giá</button>
     <button class="tab" data-view="v-drill">🔎 Khoan sâu SP</button>
@@ -330,6 +331,42 @@ table.mtx tbody td { border-bottom: 1px solid #F0EDE6; text-align: center; heigh
         </span>
       </div>
       <div class="card-body flush"><div class="matrix-scroll"><table class="mtx" id="ov-matrix"></table></div></div>
+    </div>
+  </div>
+
+  <!-- VIEW: CATALOG & PRICE STAGES -->
+  <div class="view" id="v-catalog">
+    <div id="cat-kpi" class="kpi-row"></div>
+
+    <div class="card">
+      <div class="card-head"><h3>Tổng quan giá theo giai đoạn</h3>
+        <span class="sub">Giá DGM gốc → sau đợt 1 (01/03) → sau đợt 2 (01/06) · chênh lệch MT vs GT</span>
+        <div class="spacer"></div>
+        <span class="legend"><span><span class="dot-st gray"></span>Δ = MT − GT</span></span>
+      </div>
+      <div class="card-body flush"><div class="tbl-scroll"><table class="dt" id="cat-overview"></table></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Chi tiết kênh GT</h3>
+        <span class="sub">DGM → Agent → Điểm bán · giá trước/sau, front margin & % tăng mỗi cấp</span>
+        <div class="spacer"></div>
+        <select class="fsel" id="cat-gt-region" onchange="renderCatGT()" style="font-size:11.5px"></select>
+      </div>
+      <div class="card-body flush"><div class="tbl-scroll"><table class="dt" id="cat-gt"></table></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Chi tiết kênh MT</h3>
+        <span class="sub">Mỗi SP 1 dòng · các chain là cột · giá NTD trước/sau, margin, % tăng · kéo ngang →</span>
+        <div class="spacer"></div>
+        <span class="legend">
+          <span><span class="pill green" style="padding:1px 6px">✓</span>đang KD</span>
+          <span><span class="pill gray" style="padding:1px 6px">CKD</span>chưa KD</span>
+          <span><span class="pill rose" style="padding:1px 6px">NG</span>ngưng</span>
+        </span>
+      </div>
+      <div class="card-body flush"><div class="tbl-scroll"><table class="dt" id="cat-mt"></table></div></div>
     </div>
   </div>
 
@@ -509,6 +546,9 @@ function buildModel(raw) {
   // ════ ALERTS ════
   const alerts = buildAlerts(marginRows, priceIncModel, healthModel, distModel);
 
+  // ════ CATALOG: giá DGM theo 3 giai đoạn ════
+  const catalogModel = buildCatalog(ownProducts, events, outlets, svList, pilList);
+
   // KPI tổng
   const activeSkus = ownProducts.length;
   const mtOutlets = outlets.filter(o=>o.kenh==='MT' && (o.trang_thai||'').toLowerCase()!=='inactive').length;
@@ -516,7 +556,7 @@ function buildModel(raw) {
 
   return {
     ownProducts, prodById, outlets, events, svList, pilList,
-    marginRows, distModel, priceIncModel, healthModel, alerts,
+    marginRows, distModel, priceIncModel, healthModel, alerts, catalogModel,
     kpi: { activeSkus, mtOutlets, gtOutlets },
     generatedAt: raw.generatedAt,
   };
@@ -775,6 +815,119 @@ function buildAlerts(marginRows, priceIncModel, healthModel, distModel) {
 }
 function avg(arr){ return arr.length ? arr.reduce((s,v)=>s+v,0)/arr.length : 0; }
 
+/* ── CATALOG: giá DGM theo 3 giai đoạn từ Price_Events ── */
+function buildCatalog(ownProducts, events, outlets, svList, pilList) {
+  // Tách events theo kênh + đợt. ma_tang_gia dạng "E001-MT", "E002-GT"
+  // map: ma_san_pham → { mt:{base,d1,d2,pct1,pct2}, gt:{...} }
+  function eventStage(evId){ // E001 → 1, E002 → 2
+    const m = String(evId).match(/E0*(\d+)/); return m ? Number(m[1]) : 0;
+  }
+  // gom price events theo (ma_san_pham, kenh)
+  const peByKey = {}; // ma|kenh → {1:{cu,moi,pct}, 2:{...}}
+  events.forEach(e => {
+    const kenh = (e.kenh||'').toUpperCase(); if(kenh!=='MT'&&kenh!=='GT') return;
+    const stage = eventStage(e.ma_tang_gia);
+    if(!stage || !e.ma_san_pham) return;
+    const k = e.ma_san_pham+'|'+kenh;
+    if(!peByKey[k]) peByKey[k]={};
+    peByKey[k][stage] = { cu:num(e.gia_cu), moi:num(e.gia_moi), pct:num(e.phan_tram_tang) };
+  });
+
+  function stagesFor(ma, kenh, baseFallback){
+    const k = ma+'|'+kenh;
+    const pe = peByKey[k] || {};
+    const base = (pe[1] && pe[1].cu) ? pe[1].cu : baseFallback;       // giá gốc
+    const d1   = (pe[1] && pe[1].moi) ? pe[1].moi : base;             // sau đợt 1
+    const d2   = (pe[2] && pe[2].moi) ? pe[2].moi : ((pe[2]&&pe[2].cu)?pe[2].cu:d1); // sau đợt 2
+    const pct1 = (pe[1] && pe[1].pct) ? pe[1].pct : (base&&d1&&d1!==base?(d1-base)/base*100:0);
+    const pct2 = (pe[2] && pe[2].pct) ? pe[2].pct : (d1&&d2&&d2!==d1?(d2-d1)/d1*100:0);
+    return { base, d1, d2, pct1, pct2 };
+  }
+
+  const overview = ownProducts.map(p => {
+    const mt = stagesFor(p.ma_san_pham,'MT', num(p.gia_mt));
+    const gt = stagesFor(p.ma_san_pham,'GT', num(p.gia_gt));
+    const gap = (a,b)=> (a&&b)? a-b : null;
+    return {
+      ma:p.ma_san_pham, sku:shortName(p.ten_san_pham), nhom:p.nhom_san_pham,
+      xuatxu:p.xuat_xu||'—', brand:p.thuong_hieu||'',
+      mt, gt,
+      gapBase:gap(mt.base,gt.base), gapD1:gap(mt.d1,gt.d1), gapD2:gap(mt.d2,gt.d2),
+    };
+  });
+
+  // ── Chi tiết GT: theo vùng, từng SP ──
+  // DGM (base/d1/d2) → Agent (từ Products gia_agent_*) → Điểm bán (PIL gia_outlet) → margin
+  const regionAgentCol = { 'GT North':'gia_agent_north','GT South':'gia_agent_south','GT Central':'gia_agent_central' };
+  const gtDetail = {};
+  ['GT North','GT South','GT Central'].forEach(region => {
+    const col = regionAgentCol[region];
+    gtDetail[region] = ownProducts.map(p => {
+      const dgm = stagesFor(p.ma_san_pham,'GT', num(p.gia_gt));
+      const agentPrice = num(p[col]); // agent→điểm bán (1 mức từ Products)
+      // điểm bán & NTD: lấy từ PIL/survey trong vùng
+      const regOutlets = outlets.filter(o=>o.gt_region===region && (o.loai_diem_ban||'').toLowerCase()!=='agent');
+      let outletBefore=0, outletAfter=0, ntd=0, ntdSrc='';
+      for(const o of regOutlets){
+        const pil = pilList.find(x=>x.ten_diem_ban===o.ten_diem_ban && x.ma_san_pham===p.ma_san_pham && x.status_san_pham==='tang_gia');
+        if(pil){
+          outletBefore = num(pil.gia_outlet_truoc)||outletBefore;
+          outletAfter  = num(pil.gia_outlet_sau)||outletAfter;
+          if(num(pil.gia_ntd_sau)){ ntd=num(pil.gia_ntd_sau); ntdSrc='leader'; }
+        }
+        const sv = svList.find(s=>s.ten_diem_ban===o.ten_diem_ban && s.ten_san_pham===p.ten_san_pham && s.phan_loai==='own_brand');
+        if(sv){ ntd=num(sv.gia); ntdSrc='survey'; }
+      }
+      // front margins (theo giá bán)
+      const agentMargin = (agentPrice&&dgm.d2)? (agentPrice-dgm.d2)/agentPrice*100 : null;
+      const outletMargin = (ntd&&(outletAfter||agentPrice))? (ntd-(outletAfter||agentPrice))/ntd*100 : null;
+      return {
+        ma:p.ma_san_pham, sku:shortName(p.ten_san_pham), nhom:p.nhom_san_pham,
+        dgmBase:dgm.base, dgmAfter:dgm.d2, dgmPct:dgm.pct1+dgm.pct2,
+        agentPrice, agentMargin,
+        outletBefore, outletAfter, ntd, ntdSrc, outletMargin,
+      };
+    });
+  });
+
+  // ── Chi tiết MT: mỗi SP 1 dòng, chain là cột ──
+  const mtChains = outlets.filter(o=>o.kenh==='MT' && (o.trang_thai||'').toLowerCase()!=='inactive')
+    .map(o=>o.ten_diem_ban);
+  const mtDetail = ownProducts.map(p => {
+    const dgm = stagesFor(p.ma_san_pham,'MT', num(p.gia_mt));
+    const chains = {};
+    mtChains.forEach(chain => {
+      const pil = pilList.find(x=>x.ten_diem_ban===chain && x.ma_san_pham===p.ma_san_pham);
+      const sv  = svList.find(s=>s.ten_diem_ban===chain && s.ten_san_pham===p.ten_san_pham && s.phan_loai==='own_brand');
+      let status='none', ntdBefore=0, ntdAfter=0, ntdSrc='', leaderNtd=0;
+      if(pil){
+        status = pil.status_san_pham || 'none';
+        ntdBefore = num(pil.gia_ntd_truoc);
+        leaderNtd = num(pil.gia_ntd_sau);
+        ntdAfter = leaderNtd;
+        ntdSrc = leaderNtd ? 'leader' : '';
+      }
+      if(sv){ // ưu tiên survey cho giá sau
+        if(num(sv.gia)){ ntdAfter=num(sv.gia); ntdSrc='survey'; }
+      }
+      const margin = (ntdAfter&&dgm.d2)? (ntdAfter-dgm.d2)/ntdAfter*100 : null;
+      const ntdPct = (ntdBefore&&ntdAfter&&ntdAfter!==ntdBefore)? (ntdAfter-ntdBefore)/ntdBefore*100 : null;
+      const noteLeader = (ntdSrc==='survey' && leaderNtd && leaderNtd!==ntdAfter) ? leaderNtd : 0;
+      return chains[chain] = { status, ntdBefore, ntdAfter, ntdSrc, margin, ntdPct, noteLeader };
+    });
+    // đếm trạng thái
+    const stCount = { tang_gia:0, khong_tang:0, chua_kd:0, da_ngung:0, none:0 };
+    Object.values(chains).forEach(c=>{ stCount[c.status]=(stCount[c.status]||0)+1; });
+    return {
+      ma:p.ma_san_pham, sku:shortName(p.ten_san_pham), nhom:p.nhom_san_pham,
+      dgmBase:dgm.base, dgmD1:dgm.d1, dgmD2:dgm.d2, dgmPct1:dgm.pct1, dgmPct2:dgm.pct2,
+      chains, stCount,
+    };
+  });
+
+  return { overview, gtDetail, mtDetail, mtChains };
+}
+
 /* margin → class */
 function marginClass(m){
   if(m===null||m===undefined) return 'gray';
@@ -797,6 +950,7 @@ let ovChan='ALL', hChan='ALL', actSev='ALL', drillGroup=null;
 
 function renderAll(){
   renderOverview();
+  renderCatalog();
   renderPriceIncInit();
   renderHealth();
   renderDrillInit();
@@ -1049,6 +1203,151 @@ function renderAction(){
       </div>
       <div class="alert-meta"><div class="alert-sev-label">${sevLabel[a.sev]}</div></div>
     </div>`).join('');
+}
+
+/* ── CATALOG RENDERERS ── */
+function renderCatalog(){
+  const c = MODEL.catalogModel;
+  // KPI
+  const byNhom = {}; MODEL.ownProducts.forEach(p=>{ byNhom[p.nhom_san_pham]=(byNhom[p.nhom_san_pham]||0)+1; });
+  const origins = [...new Set(MODEL.ownProducts.map(p=>p.xuat_xu).filter(Boolean))];
+  document.getElementById('cat-kpi').innerHTML = [
+    kpi('Tổng SKU', MODEL.ownProducts.length, '', 'blue', Object.keys(byNhom).length+' nhóm SP'),
+    kpi('Xuất xứ', origins.length, ' nước', 'navy', origins.slice(0,3).join(', ')),
+    kpi('Khách MT', c.mtChains.length, '', 'green', 'Trong bảng chi tiết MT'),
+    kpi('Đợt tăng giá', 2, '', 'amber', 'Gốc → 01/03 → 01/06'),
+  ].join('');
+  renderCatOverview();
+  renderCatGTInit();
+  renderCatMT();
+}
+
+function renderCatOverview(){
+  const rows = MODEL.catalogModel.overview;
+  const byNhom = {}; rows.forEach(r=>{ (byNhom[r.nhom]=byNhom[r.nhom]||[]).push(r); });
+  const keys = Object.keys(byNhom).sort((a,b)=>NHOM_ORDER.indexOf(a)-NHOM_ORDER.indexOf(b));
+  let html = `<thead><tr>
+    <th>Sản phẩm</th><th>Xuất xứ</th>
+    <th class="num" style="border-left:2px solid var(--line)">MT gốc</th><th class="num">MT đợt1</th><th class="num">MT đợt2</th>
+    <th class="num" style="border-left:2px solid var(--line)">GT gốc</th><th class="num">GT đợt1</th><th class="num">GT đợt2</th>
+    <th class="num" style="border-left:2px solid var(--line)">Δ gốc</th><th class="num">Δ đợt1</th><th class="num">Δ đợt2</th>
+  </tr></thead><tbody>`;
+  keys.forEach(nhom=>{
+    html += `<tr class="grp-row"><td colspan="11">${nhom} · ${byNhom[nhom].length} SKU</td></tr>`;
+    byNhom[nhom].forEach(r=>{
+      const gap = v => v===null?'—':(v>0?'+':'')+fmtVnd(v);
+      const gapCls = v => v===null?'':(Math.abs(v)>3000?'color:var(--amber);font-weight:600':'');
+      html += `<tr>
+        <td class="strong">${r.sku}</td>
+        <td style="font-size:11px;color:var(--muted)">${r.xuatxu}</td>
+        <td class="num" style="border-left:2px solid var(--line)">${fmtVnd(r.mt.base)}</td>
+        <td class="num">${fmtVnd(r.mt.d1)}</td>
+        <td class="num strong">${fmtVnd(r.mt.d2)}</td>
+        <td class="num" style="border-left:2px solid var(--line)">${fmtVnd(r.gt.base)}</td>
+        <td class="num">${fmtVnd(r.gt.d1)}</td>
+        <td class="num strong">${fmtVnd(r.gt.d2)}</td>
+        <td class="num" style="border-left:2px solid var(--line);${gapCls(r.gapBase)}">${gap(r.gapBase)}</td>
+        <td class="num" style="${gapCls(r.gapD1)}">${gap(r.gapD1)}</td>
+        <td class="num" style="${gapCls(r.gapD2)}">${gap(r.gapD2)}</td>
+      </tr>`;
+    });
+  });
+  html += '</tbody>';
+  document.getElementById('cat-overview').innerHTML = html;
+}
+
+function renderCatGTInit(){
+  const sel = document.getElementById('cat-gt-region');
+  const regions = Object.keys(MODEL.catalogModel.gtDetail);
+  sel.innerHTML = regions.map(r=>`<option value="${r}">${r}</option>`).join('');
+  renderCatGT();
+}
+function renderCatGT(){
+  const region = document.getElementById('cat-gt-region').value || 'GT North';
+  const rows = MODEL.catalogModel.gtDetail[region] || [];
+  const byNhom = {}; rows.forEach(r=>{ (byNhom[r.nhom]=byNhom[r.nhom]||[]).push(r); });
+  const keys = Object.keys(byNhom).sort((a,b)=>NHOM_ORDER.indexOf(a)-NHOM_ORDER.indexOf(b));
+  let html = `<thead><tr>
+    <th>Sản phẩm</th>
+    <th class="num">DGM gốc</th><th class="num">DGM sau</th><th class="ctr">DGM %</th>
+    <th class="num" style="border-left:2px solid var(--line)">Agent→ĐB</th><th class="ctr">Agent margin</th>
+    <th class="num" style="border-left:2px solid var(--line)">ĐB trước</th><th class="num">ĐB sau</th>
+    <th class="num">NTD</th><th class="ctr">Outlet margin</th>
+  </tr></thead><tbody>`;
+  keys.forEach(nhom=>{
+    html += `<tr class="grp-row"><td colspan="10">${nhom}</td></tr>`;
+    byNhom[nhom].forEach(r=>{
+      html += `<tr>
+        <td class="strong">${r.sku}</td>
+        <td class="num">${fmtVnd(r.dgmBase)}</td>
+        <td class="num strong">${fmtVnd(r.dgmAfter)}</td>
+        <td class="ctr">${r.dgmPct?`<span class="pill blue">+${r.dgmPct.toFixed(0)}%</span>`:'—'}</td>
+        <td class="num" style="border-left:2px solid var(--line)">${fmtVnd(r.agentPrice)}</td>
+        <td class="ctr">${r.agentMargin!==null?`<span class="mcell ${marginClass(r.agentMargin)}">${fmtPct(r.agentMargin,0)}</span>`:'<span class="mcell gray">—</span>'}</td>
+        <td class="num" style="border-left:2px solid var(--line)">${fmtVnd(r.outletBefore)}</td>
+        <td class="num">${fmtVnd(r.outletAfter)}</td>
+        <td class="num strong">${fmtVnd(r.ntd)}${r.ntdSrc==='survey'?' <span style="font-size:9px;color:var(--green)">●</span>':r.ntdSrc==='leader'?' <span style="font-size:9px;color:var(--blue)">●</span>':''}</td>
+        <td class="ctr">${r.outletMargin!==null?`<span class="mcell ${marginClass(r.outletMargin)}">${fmtPct(r.outletMargin,0)}</span>`:'<span class="mcell gray">—</span>'}</td>
+      </tr>`;
+    });
+  });
+  html += '</tbody>';
+  document.getElementById('cat-gt').innerHTML = html
+    + `<div style="padding:8px 12px;font-size:10.5px;color:var(--muted)"><span style="color:var(--green)">●</span> giá survey &nbsp; <span style="color:var(--blue)">●</span> giá leader nhập</div>`;
+}
+
+function renderCatMT(){
+  const c = MODEL.catalogModel;
+  const chains = c.mtChains;
+  const byNhom = {}; c.mtDetail.forEach(r=>{ (byNhom[r.nhom]=byNhom[r.nhom]||[]).push(r); });
+  const keys = Object.keys(byNhom).sort((a,b)=>NHOM_ORDER.indexOf(a)-NHOM_ORDER.indexOf(b));
+
+  // header: SP | DGM gốc | DGM đợt2 | %tăng || mỗi chain: NTD sau | margin | %
+  let html = `<thead><tr>
+    <th style="position:sticky;left:0;background:#FBFAF7;z-index:2">Sản phẩm</th>
+    <th class="num">DGM gốc</th><th class="num">DGM đợt2</th><th class="ctr">DGM %</th>`;
+  chains.forEach(ch=>{
+    html += `<th class="ctr" colspan="3" style="border-left:2px solid var(--line);background:var(--navy);color:#fff" title="${ch}">${ch.length>11?ch.slice(0,10)+'…':ch}</th>`;
+  });
+  html += `</tr><tr><th style="position:sticky;left:0;background:#FBFAF7;z-index:2"></th><th></th><th></th><th></th>`;
+  chains.forEach(()=>{ html += `<th class="num" style="border-left:2px solid var(--line);font-size:9px">NTD</th><th class="ctr" style="font-size:9px">Margin</th><th class="ctr" style="font-size:9px">%↑</th>`; });
+  html += `</tr></thead><tbody>`;
+
+  keys.forEach(nhom=>{
+    html += `<tr class="grp-row"><td colspan="${4+chains.length*3}">${nhom}</td></tr>`;
+    byNhom[nhom].forEach(r=>{
+      html += `<tr><td class="strong" style="position:sticky;left:0;background:#fff;z-index:1">${r.sku}</td>
+        <td class="num">${fmtVnd(r.dgmBase)}</td>
+        <td class="num strong">${fmtVnd(r.dgmD2)}</td>
+        <td class="ctr">${(r.dgmPct1+r.dgmPct2)?`<span class="pill blue">+${(r.dgmPct1+r.dgmPct2).toFixed(0)}%</span>`:'—'}</td>`;
+      chains.forEach(ch=>{
+        const cell = r.chains[ch];
+        if(!cell || cell.status==='none'){
+          html += `<td class="num" style="border-left:2px solid var(--line);color:var(--muted-2)">—</td><td class="ctr"><span class="pill gray" style="padding:1px 5px">·</span></td><td class="ctr">—</td>`;
+        } else if(cell.status==='chua_kd'){
+          html += `<td colspan="3" class="ctr" style="border-left:2px solid var(--line)"><span class="pill gray">Chưa KD</span></td>`;
+        } else if(cell.status==='da_ngung'){
+          html += `<td colspan="3" class="ctr" style="border-left:2px solid var(--line)"><span class="pill rose">Đã ngưng</span></td>`;
+        } else {
+          const note = cell.noteLeader ? ` title="Leader nhập: ${fmtVnd(cell.noteLeader)}"` : '';
+          const srcDot = cell.ntdSrc==='survey'?'<span style="color:var(--green)">●</span>':cell.ntdSrc==='leader'?'<span style="color:var(--blue)">●</span>':'';
+          html += `<td class="num strong" style="border-left:2px solid var(--line)"${note}>${fmtVnd(cell.ntdAfter)} ${srcDot}${cell.noteLeader?'<span style="font-size:9px;color:var(--amber)">⚑</span>':''}</td>
+            <td class="ctr">${cell.margin!==null?`<span class="mcell ${marginClass(cell.margin)}" style="padding:1px 5px">${fmtPct(cell.margin,0)}</span>`:'—'}</td>
+            <td class="ctr" style="font-size:10px;font-family:var(--mono)">${cell.ntdPct!==null?(cell.ntdPct>0?'+':'')+cell.ntdPct.toFixed(0)+'%':'—'}</td>`;
+        }
+      });
+      html += `</tr>`;
+    });
+  });
+  // dòng đếm số mã đang KD theo chain
+  html += `<tr style="border-top:2px solid var(--navy)"><td class="strong" style="position:sticky;left:0;background:#FBFAF7;z-index:1">Số mã đang KD</td><td></td><td></td><td></td>`;
+  chains.forEach(ch=>{
+    let active=0; c.mtDetail.forEach(r=>{ const cl=r.chains[ch]; if(cl&&(cl.status==='tang_gia'||cl.status==='khong_tang'))active++; });
+    html += `<td colspan="3" class="ctr" style="border-left:2px solid var(--line)"><span class="pill green">${active} mã</span></td>`;
+  });
+  html += `</tr></tbody>`;
+  document.getElementById('cat-mt').innerHTML = html
+    + `<div style="padding:8px 12px;font-size:10.5px;color:var(--muted)"><span style="color:var(--green)">●</span> giá survey &nbsp; <span style="color:var(--blue)">●</span> giá leader &nbsp; <span style="color:var(--amber)">⚑</span> survey lệch giá leader (hover xem)</div>`;
 }
 
 /* ── helpers ── */

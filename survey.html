@@ -2425,21 +2425,9 @@ function puSetStatus(id, status) {
 
   const priceSection = document.getElementById('pu-price-section-' + id);
   if (priceSection) {
-    const showPrice = newStatus === 'tang_gia' || newStatus === 'khong_tang';
+    // Chỉ hiện form nhập giá khi "Tăng giá". Không tăng / Chưa KD / Đã ngưng → ẩn.
+    const showPrice = newStatus === 'tang_gia';
     priceSection.style.display = showPrice ? 'block' : 'none';
-
-    // Không tăng → auto copy giá trước sang sau
-    if (newStatus === 'khong_tang') {
-      ['dgm','out','ntd'].forEach(prefix => {
-        const bEl = document.getElementById(`pu-${prefix}-b-${id}`);
-        const aEl = document.getElementById(`pu-${prefix}-a-${id}`);
-        if (bEl && aEl && bEl.value && !aEl.value) {
-          aEl.value = bEl.value;
-          const fieldMap = { dgm:'gia_dgm_sau', out:'gia_outlet_sau', ntd:'gia_ntd_sau' };
-          inp[fieldMap[prefix]] = bEl.value;
-        }
-      });
-    }
   }
 
   puUpdateCard(id);
@@ -2451,20 +2439,6 @@ function puOnInput(id, field, val) {
   const inp = puState.inputs[id];
   if (!inp) return;
   inp[field] = val;
-
-  // Không tăng: auto copy giá trước → sau
-  if (inp.status === 'khong_tang') {
-    const pairs = {
-      gia_dgm_truoc: ['gia_dgm_sau', `pu-dgm-a-${id}`],
-      gia_outlet_truoc: ['gia_outlet_sau', `pu-out-a-${id}`],
-      gia_ntd_truoc: ['gia_ntd_sau', `pu-ntd-a-${id}`],
-    };
-    if (pairs[field]) {
-      const [destField, destId] = pairs[field];
-      const destEl = document.getElementById(destId);
-      if (destEl && !destEl.value) { destEl.value = val; inp[destField] = val; }
-    }
-  }
 
   // Highlight missing NTD sau
   if (field === 'gia_ntd_sau') {
