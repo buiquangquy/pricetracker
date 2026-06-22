@@ -427,7 +427,7 @@ table.mtx tbody td { border-bottom: 1px solid #F0EDE6; text-align: center; heigh
 /* ════════════════════════════════════════════════════
    CONFIG
    ════════════════════════════════════════════════════ */
-const API_URL = "https://script.google.com/macros/s/AKfycbwNsnlUEE6uDCc8Q2jIORQiU9kHuseyIvfZ41nGec9GJf6tQ7rdyEGkIwK46xPaVd0Dyw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyXDz3e6kkxm0S1Hc5NVUudaXbdu3dcWa7leVOIBN3-oOc07GEG15lM0ACub9Up3RPn/exec";
 
 // Ngưỡng (đã chốt)
 const TH = {
@@ -454,6 +454,11 @@ async function boot(force) {
     try { data = JSON.parse(text); }
     catch(e) { throw new Error('API trả về không phải JSON (deploy/quyền?)'); }
     if (data.error) throw new Error(data.error);
+    // Chẩn đoán: getAnalytics chưa deploy → trả response mặc định (không có products)
+    if (!data.products) {
+      const keys = Object.keys(data).join(', ');
+      throw new Error('GETANALYTICS_NOT_DEPLOYED|' + keys);
+    }
     RAW = data;
     MODEL = buildModel(data);
     setStatus('live', data.generatedAt);
@@ -461,11 +466,30 @@ async function boot(force) {
   } catch(e) {
     console.error('[DGM]', e);
     setStatus('error', e.message);
-    document.getElementById('v-overview').innerHTML =
+    let msg, hint;
+    if (String(e.message).startsWith('GETANALYTICS_NOT_DEPLOYED')) {
+      const got = e.message.split('|')[1] || '';
+      msg = 'Endpoint <b>getAnalytics</b> chưa hoạt động';
+      hint = `API có phản hồi nhưng không trả dữ liệu sản phẩm.<br>
+        <b>Nguyên nhân:</b> Code.gs có <code>getAnalytics</code> chưa được deploy.<br><br>
+        <b>Cách sửa:</b><br>
+        1. Apps Script → Code.gs → kiểm tra có hàm <code>function getAnalytics()</code><br>
+        2. Save (Ctrl+S)<br>
+        3. Deploy → Manage deployments → Edit (bút chì) → Version: <b>New version</b> → Deploy<br>
+        4. Test mở: <a href="${API_URL}?action=getAnalytics" target="_blank" style="color:var(--blue)">link getAnalytics</a> — phải thấy <code>"products":[...]</code><br><br>
+        <span style="font-size:11px;color:var(--muted-2)">API hiện trả về các khoá: ${got||'(rỗng)'}</span>`;
+    } else {
+      msg = 'Không tải được dữ liệu';
+      hint = e.message;
+    }
+    document.querySelectorAll('.view').forEach(v=>v.style.display='none');
+    const ov = document.getElementById('v-overview');
+    ov.style.display='block'; ov.classList.add('active');
+    ov.innerHTML =
       `<div class="center-state"><div class="empty-ico">⚠️</div>
-       <div style="font-weight:600;color:var(--navy)">Không tải được dữ liệu</div>
-       <div style="font-size:12px;margin-top:6px">${e.message}</div>
-       <button class="refresh-btn" style="margin-top:14px;background:var(--navy)" onclick="boot(true)">↻ Thử lại</button></div>`;
+       <div style="font-weight:600;color:var(--navy);font-size:15px">${msg}</div>
+       <div style="font-size:12.5px;margin-top:10px;text-align:left;max-width:560px;line-height:1.7;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:var(--shadow)">${hint}</div>
+       <button class="refresh-btn" style="margin-top:16px;background:var(--navy)" onclick="boot(true)">↻ Thử lại</button></div>`;
   }
 }
 
