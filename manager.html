@@ -815,86 +815,99 @@ function buildAlerts(marginRows, priceIncModel, healthModel, distModel) {
 }
 function avg(arr){ return arr.length ? arr.reduce((s,v)=>s+v,0)/arr.length : 0; }
 
-/* ── CATALOG: giá DGM theo 3 giai đoạn từ Price_Events ── */
+/* ── CATALOG: giá DGM theo 3 giai đoạn ĐỌC THẲNG từ Products ──
+   Gốc: gia_mt / gia_gt / gia_agent_{region}
+   Đợt 1: tg1_gia_mt / tg1_gia_gt / tg1_gia_agent_{region} (+ tg1_pct_*)
+   Đợt 2: tg2_gia_mt / tg2_gia_gt / tg2_gia_agent_{region} (+ tg2_pct_*)
+   Cột agent có thể chứa "Chưa KD" → coi như chưa phân phối qua agent đó. */
 function buildCatalog(ownProducts, events, outlets, svList, pilList) {
-  // Tách events theo kênh + đợt. ma_tang_gia dạng "E001-MT", "E002-GT"
-  // map: ma_san_pham → { mt:{base,d1,d2,pct1,pct2}, gt:{...} }
-  function eventStage(evId){ // E001 → 1, E002 → 2
-    const m = String(evId).match(/E0*(\d+)/); return m ? Number(m[1]) : 0;
-  }
-  // gom price events theo (ma_san_pham, kenh)
-  const peByKey = {}; // ma|kenh → {1:{cu,moi,pct}, 2:{...}}
-  events.forEach(e => {
-    const kenh = (e.kenh||'').toUpperCase(); if(kenh!=='MT'&&kenh!=='GT') return;
-    const stage = eventStage(e.ma_tang_gia);
-    if(!stage || !e.ma_san_pham) return;
-    const k = e.ma_san_pham+'|'+kenh;
-    if(!peByKey[k]) peByKey[k]={};
-    peByKey[k][stage] = { cu:num(e.gia_cu), moi:num(e.gia_moi), pct:num(e.phan_tram_tang) };
-  });
 
-  function stagesFor(ma, kenh, baseFallback){
-    const k = ma+'|'+kenh;
-    const pe = peByKey[k] || {};
-    const base = (pe[1] && pe[1].cu) ? pe[1].cu : baseFallback;       // giá gốc
-    const d1   = (pe[1] && pe[1].moi) ? pe[1].moi : base;             // sau đợt 1
-    const d2   = (pe[2] && pe[2].moi) ? pe[2].moi : ((pe[2]&&pe[2].cu)?pe[2].cu:d1); // sau đợt 2
-    const pct1 = (pe[1] && pe[1].pct) ? pe[1].pct : (base&&d1&&d1!==base?(d1-base)/base*100:0);
-    const pct2 = (pe[2] && pe[2].pct) ? pe[2].pct : (d1&&d2&&d2!==d1?(d2-d1)/d1*100:0);
+  // đọc 1 ô giá → {val, label}: label nếu là text trạng thái (Chưa KD / Đã ngưng)
+  function priceCell(raw){
+    const s = String(raw||'').trim();
+    if(!s) return { val:0, label:'' };
+    const n = num(s);
+    if(n>0) return { val:n, label:'' };
+    // text trạng thái
+    if(/chưa\s*kd|chua\s*kd/i.test(s)) return { val:0, label:'Chưa KD' };
+    if(/ngưng|ngung/i.test(s))         return { val:0, label:'Đã ngưng' };
+    if(/không\s*kd|khong\s*kd/i.test(s)) return { val:0, label:'Không KD' };
+    return { val:0, label:'' };
+  }
+
+  // giá DGM theo kênh (mt|gt) qua 3 đợt — đọc trực tiếp từ product row
+  function dgmStages(p, kenh){
+    const base = num(p['gia_'+kenh]);
+    const d1raw = p['tg1_gia_'+kenh], d2raw = p['tg2_gia_'+kenh];
+    const d1 = num(d1raw)>0 ? num(d1raw) : base;
+    const d2 = num(d2raw)>0 ? num(d2raw) : d1;
+    const pct1 = num(p['tg1_pct_'+kenh])>0 ? num(p['tg1_pct_'+kenh]) : (base&&d1&&d1!==base?(d1-base)/base*100:0);
+    const pct2 = num(p['tg2_pct_'+kenh])>0 ? num(p['tg2_pct_'+kenh]) : (d1&&d2&&d2!==d1?(d2-d1)/d1*100:0);
     return { base, d1, d2, pct1, pct2 };
   }
 
+  // giá agent theo vùng qua 3 đợt
+  const regionKey = { 'GT North':'north','GT South':'south','GT Central':'central' };
+  function agentStages(p, region){
+    const k = regionKey[region];
+    const base = priceCell(p['gia_agent_'+k]);
+    const d1   = priceCell(p['tg1_gia_agent_'+k]);
+    const d2   = priceCell(p['tg2_gia_agent_'+k]);
+    return {
+      base: base.val||0, baseLabel: base.label,
+      d1: d1.val>0 ? d1.val : base.val, d1Label: d1.label||base.label,
+      d2: d2.val>0 ? d2.val : (d1.val>0?d1.val:base.val), d2Label: d2.label||d1.label||base.label,
+    };
+  }
+
+  // ── BẢNG 1: Tổng quan ──
   const overview = ownProducts.map(p => {
-    const mt = stagesFor(p.ma_san_pham,'MT', num(p.gia_mt));
-    const gt = stagesFor(p.ma_san_pham,'GT', num(p.gia_gt));
+    const mt = dgmStages(p,'mt');
+    const gt = dgmStages(p,'gt');
     const gap = (a,b)=> (a&&b)? a-b : null;
     return {
       ma:p.ma_san_pham, sku:shortName(p.ten_san_pham), nhom:p.nhom_san_pham,
       xuatxu:p.xuat_xu||'—', brand:p.thuong_hieu||'',
+      quycach:(p.quy_cach_mac_dinh||'')+(p.don_vi||''), baobi:p.bao_bi||'',
       mt, gt,
       gapBase:gap(mt.base,gt.base), gapD1:gap(mt.d1,gt.d1), gapD2:gap(mt.d2,gt.d2),
     };
   });
 
-  // ── Chi tiết GT: theo vùng, từng SP ──
-  // DGM (base/d1/d2) → Agent (từ Products gia_agent_*) → Điểm bán (PIL gia_outlet) → margin
-  const regionAgentCol = { 'GT North':'gia_agent_north','GT South':'gia_agent_south','GT Central':'gia_agent_central' };
+  // ── BẢNG 2: Chi tiết GT theo vùng ──
   const gtDetail = {};
   ['GT North','GT South','GT Central'].forEach(region => {
-    const col = regionAgentCol[region];
     gtDetail[region] = ownProducts.map(p => {
-      const dgm = stagesFor(p.ma_san_pham,'GT', num(p.gia_gt));
-      const agentPrice = num(p[col]); // agent→điểm bán (1 mức từ Products)
-      // điểm bán & NTD: lấy từ PIL/survey trong vùng
+      const dgm = dgmStages(p,'gt');
+      const agent = agentStages(p, region);
+      // NTD/điểm bán từ survey/PIL trong vùng (có thể trống lúc đầu)
       const regOutlets = outlets.filter(o=>o.gt_region===region && (o.loai_diem_ban||'').toLowerCase()!=='agent');
-      let outletBefore=0, outletAfter=0, ntd=0, ntdSrc='';
+      let outletAfter=0, ntd=0, ntdSrc='';
       for(const o of regOutlets){
         const pil = pilList.find(x=>x.ten_diem_ban===o.ten_diem_ban && x.ma_san_pham===p.ma_san_pham && x.status_san_pham==='tang_gia');
-        if(pil){
-          outletBefore = num(pil.gia_outlet_truoc)||outletBefore;
-          outletAfter  = num(pil.gia_outlet_sau)||outletAfter;
-          if(num(pil.gia_ntd_sau)){ ntd=num(pil.gia_ntd_sau); ntdSrc='leader'; }
-        }
+        if(pil && num(pil.gia_outlet_sau)) outletAfter = num(pil.gia_outlet_sau);
+        if(pil && num(pil.gia_ntd_sau)){ ntd=num(pil.gia_ntd_sau); ntdSrc='leader'; }
         const sv = svList.find(s=>s.ten_diem_ban===o.ten_diem_ban && s.ten_san_pham===p.ten_san_pham && s.phan_loai==='own_brand');
-        if(sv){ ntd=num(sv.gia); ntdSrc='survey'; }
+        if(sv && num(sv.gia)){ ntd=num(sv.gia); ntdSrc='survey'; }
       }
-      // front margins (theo giá bán)
-      const agentMargin = (agentPrice&&dgm.d2)? (agentPrice-dgm.d2)/agentPrice*100 : null;
-      const outletMargin = (ntd&&(outletAfter||agentPrice))? (ntd-(outletAfter||agentPrice))/ntd*100 : null;
+      // agent margin = (giá agent bán − giá DGM) / giá agent bán, ở đợt mới nhất
+      const agentMargin = (agent.d2 && dgm.d2) ? (agent.d2-dgm.d2)/agent.d2*100 : null;
+      const outletMargin = (ntd && agent.d2) ? (ntd-agent.d2)/ntd*100 : null;
       return {
         ma:p.ma_san_pham, sku:shortName(p.ten_san_pham), nhom:p.nhom_san_pham,
-        dgmBase:dgm.base, dgmAfter:dgm.d2, dgmPct:dgm.pct1+dgm.pct2,
-        agentPrice, agentMargin,
-        outletBefore, outletAfter, ntd, ntdSrc, outletMargin,
+        dgm, agent, agentMargin,
+        outletAfter, ntd, ntdSrc, outletMargin,
+        notDist: agent.base===0 && !!agent.baseLabel, // chưa phân phối qua agent vùng này
+        distLabel: agent.d2Label,
       };
     });
   });
 
-  // ── Chi tiết MT: mỗi SP 1 dòng, chain là cột ──
+  // ── BẢNG 3: Chi tiết MT (chain là cột) ──
   const mtChains = outlets.filter(o=>o.kenh==='MT' && (o.trang_thai||'').toLowerCase()!=='inactive')
     .map(o=>o.ten_diem_ban);
   const mtDetail = ownProducts.map(p => {
-    const dgm = stagesFor(p.ma_san_pham,'MT', num(p.gia_mt));
+    const dgm = dgmStages(p,'mt');
     const chains = {};
     mtChains.forEach(chain => {
       const pil = pilList.find(x=>x.ten_diem_ban===chain && x.ma_san_pham===p.ma_san_pham);
@@ -904,18 +917,14 @@ function buildCatalog(ownProducts, events, outlets, svList, pilList) {
         status = pil.status_san_pham || 'none';
         ntdBefore = num(pil.gia_ntd_truoc);
         leaderNtd = num(pil.gia_ntd_sau);
-        ntdAfter = leaderNtd;
-        ntdSrc = leaderNtd ? 'leader' : '';
+        ntdAfter = leaderNtd; ntdSrc = leaderNtd ? 'leader' : '';
       }
-      if(sv){ // ưu tiên survey cho giá sau
-        if(num(sv.gia)){ ntdAfter=num(sv.gia); ntdSrc='survey'; }
-      }
+      if(sv && num(sv.gia)){ ntdAfter=num(sv.gia); ntdSrc='survey'; }
       const margin = (ntdAfter&&dgm.d2)? (ntdAfter-dgm.d2)/ntdAfter*100 : null;
       const ntdPct = (ntdBefore&&ntdAfter&&ntdAfter!==ntdBefore)? (ntdAfter-ntdBefore)/ntdBefore*100 : null;
       const noteLeader = (ntdSrc==='survey' && leaderNtd && leaderNtd!==ntdAfter) ? leaderNtd : 0;
       return chains[chain] = { status, ntdBefore, ntdAfter, ntdSrc, margin, ntdPct, noteLeader };
     });
-    // đếm trạng thái
     const stCount = { tang_gia:0, khong_tang:0, chua_kd:0, da_ngung:0, none:0 };
     Object.values(chains).forEach(c=>{ stCount[c.status]=(stCount[c.status]||0)+1; });
     return {
@@ -1268,32 +1277,38 @@ function renderCatGT(){
   const byNhom = {}; rows.forEach(r=>{ (byNhom[r.nhom]=byNhom[r.nhom]||[]).push(r); });
   const keys = Object.keys(byNhom).sort((a,b)=>NHOM_ORDER.indexOf(a)-NHOM_ORDER.indexOf(b));
   let html = `<thead><tr>
-    <th>Sản phẩm</th>
-    <th class="num">DGM gốc</th><th class="num">DGM sau</th><th class="ctr">DGM %</th>
-    <th class="num" style="border-left:2px solid var(--line)">Agent→ĐB</th><th class="ctr">Agent margin</th>
-    <th class="num" style="border-left:2px solid var(--line)">ĐB trước</th><th class="num">ĐB sau</th>
-    <th class="num">NTD</th><th class="ctr">Outlet margin</th>
+    <th rowspan="2" style="vertical-align:bottom">Sản phẩm</th>
+    <th colspan="3" class="ctr" style="border-left:2px solid var(--line);background:#FBFAF7">DGM → Agent</th>
+    <th colspan="3" class="ctr" style="border-left:2px solid var(--line);background:#FBFAF7">Agent → Điểm bán</th>
+    <th rowspan="2" class="ctr" style="border-left:2px solid var(--line);vertical-align:bottom">Agent<br>margin</th>
+    <th rowspan="2" class="num" style="border-left:2px solid var(--line);vertical-align:bottom">NTD</th>
+    <th rowspan="2" class="ctr" style="vertical-align:bottom">Outlet<br>margin</th>
+  </tr><tr>
+    <th class="num" style="border-left:2px solid var(--line)">gốc</th><th class="num">đợt1</th><th class="num">đợt2</th>
+    <th class="num" style="border-left:2px solid var(--line)">gốc</th><th class="num">đợt1</th><th class="num">đợt2</th>
   </tr></thead><tbody>`;
   keys.forEach(nhom=>{
-    html += `<tr class="grp-row"><td colspan="10">${nhom}</td></tr>`;
+    html += `<tr class="grp-row"><td colspan="11">${nhom}</td></tr>`;
     byNhom[nhom].forEach(r=>{
+      // nếu chưa phân phối qua agent vùng này
+      const agentCell = (v,label) => label ? `<span class="pill gray" style="padding:1px 5px">${label}</span>` : fmtVnd(v);
       html += `<tr>
         <td class="strong">${r.sku}</td>
-        <td class="num">${fmtVnd(r.dgmBase)}</td>
-        <td class="num strong">${fmtVnd(r.dgmAfter)}</td>
-        <td class="ctr">${r.dgmPct?`<span class="pill blue">+${r.dgmPct.toFixed(0)}%</span>`:'—'}</td>
-        <td class="num" style="border-left:2px solid var(--line)">${fmtVnd(r.agentPrice)}</td>
-        <td class="ctr">${r.agentMargin!==null?`<span class="mcell ${marginClass(r.agentMargin)}">${fmtPct(r.agentMargin,0)}</span>`:'<span class="mcell gray">—</span>'}</td>
-        <td class="num" style="border-left:2px solid var(--line)">${fmtVnd(r.outletBefore)}</td>
-        <td class="num">${fmtVnd(r.outletAfter)}</td>
-        <td class="num strong">${fmtVnd(r.ntd)}${r.ntdSrc==='survey'?' <span style="font-size:9px;color:var(--green)">●</span>':r.ntdSrc==='leader'?' <span style="font-size:9px;color:var(--blue)">●</span>':''}</td>
+        <td class="num" style="border-left:2px solid var(--line)">${fmtVnd(r.dgm.base)}</td>
+        <td class="num">${fmtVnd(r.dgm.d1)}</td>
+        <td class="num strong">${fmtVnd(r.dgm.d2)}</td>
+        <td class="num" style="border-left:2px solid var(--line)">${agentCell(r.agent.base, r.agent.baseLabel)}</td>
+        <td class="num">${agentCell(r.agent.d1, r.agent.d1Label)}</td>
+        <td class="num strong">${agentCell(r.agent.d2, r.agent.d2Label)}</td>
+        <td class="ctr" style="border-left:2px solid var(--line)">${r.agentMargin!==null?`<span class="mcell ${marginClass(r.agentMargin)}">${fmtPct(r.agentMargin,0)}</span>`:'<span class="mcell gray">—</span>'}</td>
+        <td class="num strong" style="border-left:2px solid var(--line)">${r.ntd?fmtVnd(r.ntd):'<span style="color:var(--muted-2)">—</span>'}${r.ntdSrc==='survey'?' <span style="font-size:9px;color:var(--green)">●</span>':r.ntdSrc==='leader'?' <span style="font-size:9px;color:var(--blue)">●</span>':''}</td>
         <td class="ctr">${r.outletMargin!==null?`<span class="mcell ${marginClass(r.outletMargin)}">${fmtPct(r.outletMargin,0)}</span>`:'<span class="mcell gray">—</span>'}</td>
       </tr>`;
     });
   });
   html += '</tbody>';
   document.getElementById('cat-gt').innerHTML = html
-    + `<div style="padding:8px 12px;font-size:10.5px;color:var(--muted)"><span style="color:var(--green)">●</span> giá survey &nbsp; <span style="color:var(--blue)">●</span> giá leader nhập</div>`;
+    + `<div style="padding:8px 12px;font-size:10.5px;color:var(--muted)"><span style="color:var(--green)">●</span> giá survey &nbsp; <span style="color:var(--blue)">●</span> giá leader nhập &nbsp;·&nbsp; NTD & outlet margin sẽ đầy khi team cập nhật survey/giá tăng</div>`;
 }
 
 function renderCatMT(){
