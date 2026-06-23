@@ -1335,33 +1335,40 @@ function renderCompetitor(){
     const comps = g.brands.filter(b=>!b.own);
     if(!comps.length && !g.brands.some(b=>b.own)) return;
     any=true;
-    // thang định vị: min..max đ/đơn vị
+    // thang định vị: min..max đ/100 đơn vị
     const ppus = g.brands.map(b=>b.avgPpu).filter(v=>v);
-    const lo = Math.min(...ppus, Infinity), hi = Math.max(...ppus, 0);
-    const span = (hi>lo)?(hi-lo):1;
-    const posOf = v => v? Math.round((v-lo)/span*100) : 0;
+    const lo = ppus.length?Math.min(...ppus):0, hi = ppus.length?Math.max(...ppus):0;
+    const span = (hi>lo)?(hi-lo):0;
+    const posOf = v => (!v)?50 : (span? (v-lo)/span*100 : 50);   // 1 brand hoặc bằng giá → giữa
 
-    // strip định vị
-    let strip = `<div style="position:relative;height:46px;margin:4px 12px 14px">
-      <div style="position:absolute;top:22px;left:0;right:0;height:3px;background:linear-gradient(90deg,#E8F0E8,#FBF0E0,#FBE0E0);border-radius:3px"></div>
-      <div style="position:absolute;top:32px;left:0;font-size:9px;color:var(--muted-2)">rẻ ◄ ${fmtVnd(lo)}đ/đv</div>
-      <div style="position:absolute;top:32px;right:0;font-size:9px;color:var(--muted-2)">${fmtVnd(hi)}đ/đv ► đắt</div>`;
-    g.brands.filter(b=>b.avgPpu).forEach(b=>{
-      const left = posOf(b.avgPpu);
+    // strip định vị — nhãn so le trên/dưới, mép canh lề, đ/100 cho khớp bảng
+    const sorted = g.brands.filter(b=>b.avgPpu).slice().sort((a,b)=>a.avgPpu-b.avgPpu);
+    let strip = `<div style="position:relative;height:74px;margin:8px 16px 6px">
+      <div style="position:absolute;top:36px;left:0;right:0;height:3px;background:linear-gradient(90deg,#E8F0E8,#FBF0E0,#FBE0E0);border-radius:3px"></div>
+      <div style="position:absolute;top:60px;left:0;font-size:9px;color:var(--muted-2)">rẻ ◄ ${fmtVnd(Math.round(lo*100))}đ/100</div>
+      <div style="position:absolute;top:60px;right:0;font-size:9px;color:var(--muted-2)">${fmtVnd(Math.round(hi*100))}đ/100 ► đắt</div>`;
+    sorted.forEach((b,i)=>{
+      const left = Math.max(0, Math.min(100, posOf(b.avgPpu)));
+      const above = i % 2 === 0;                       // so le trên/dưới
       const col = b.own?'var(--navy)':b.pos==='value'?'var(--rose)':b.pos==='premium'?'var(--amber)':'var(--muted)';
-      strip += `<div title="${b.brand}: ${fmtVnd(b.avgPpu)}đ/đv" style="position:absolute;top:6px;left:${left}%;transform:translateX(-50%);text-align:center">
-        <div style="width:${b.own?12:9}px;height:${b.own?12:9}px;border-radius:50%;background:${col};margin:0 auto;border:2px solid #fff;box-shadow:0 0 0 1px ${col}"></div>
-        <div style="font-size:8.5px;white-space:nowrap;margin-top:1px;color:${col};font-weight:${b.own?700:400};max-width:70px;overflow:hidden;text-overflow:ellipsis">${b.own?'★ Ayam':b.brand}</div>
-      </div>`;
+      // chấm trên trục
+      strip += `<div style="position:absolute;top:32px;left:${left}%;transform:translateX(-50%);z-index:2">
+        <div style="width:${b.own?13:10}px;height:${b.own?13:10}px;border-radius:50%;background:${col};border:2px solid #fff;box-shadow:0 0 0 1px ${col}"></div></div>`;
+      // nhãn — mép trái canh trái, mép phải canh phải, giữa canh giữa (tránh bị cắt)
+      let lblStyle;
+      if(left < 12)      lblStyle = `left:0;text-align:left`;
+      else if(left > 88) lblStyle = `right:0;text-align:right`;
+      else               lblStyle = `left:${left}%;transform:translateX(-50%);text-align:center`;
+      strip += `<div title="${b.brand}: ${fmtVnd(Math.round(b.avgPpu*100))}đ/100" style="position:absolute;${lblStyle};${above?'top:10px':'top:48px'};font-size:9px;white-space:nowrap;color:${col};font-weight:${b.own?700:500};max-width:120px;overflow:hidden;text-overflow:ellipsis">${b.own?'★ Ayam':b.brand}</div>`;
     });
     strip += `</div>`;
 
     // bảng
     const posBadge = b => {
       if(b.own) return '<span class="pill blue">Ayam (chuẩn)</span>';
-      if(b.pos==='premium') return `<span class="pill amber">Cao cấp +${b.posPct.toFixed(0)}%</span>`;
-      if(b.pos==='value')   return `<span class="pill rose">Giá thấp ${b.posPct.toFixed(0)}%</span>`;
-      if(b.pos==='parity')  return `<span class="pill gray">Ngang ${b.posPct>0?'+':''}${b.posPct.toFixed(0)}%</span>`;
+      if(b.pos==='premium') return `<span class="pill amber">Cao hơn +${b.posPct.toFixed(0)}%</span>`;
+      if(b.pos==='value')   return `<span class="pill rose">Thấp hơn ${b.posPct.toFixed(0)}%</span>`;
+      if(b.pos==='parity')  return `<span class="pill gray">Ngang giá ${b.posPct>0?'+':''}${b.posPct.toFixed(0)}%</span>`;
       return '<span class="pill gray">—</span>';
     };
     const chBadge = chs => chs.map(c=>`<span class="pill ${c==='MT'?'blue':'green'}" style="padding:1px 6px">${c}</span>`).join(' ')||'—';
