@@ -132,7 +132,7 @@ h1,h2,h3,h4 { font-family: 'Sora', sans-serif; font-weight: 700; letter-spacing:
 /* thanh cuộn ngang ở ĐẦU bảng + kéo-pan */
 .tbl-scroll.canpan { cursor: grab; }
 .tbl-scroll.panning { cursor: grabbing; user-select: none; }
-.tbl-scroll-top { overflow-x: auto; overflow-y: hidden; height: 13px; position: sticky; top: 0; z-index: 6; background: #FBFAF7; border-bottom: 1px solid var(--line); }
+.tbl-scroll-top { overflow-x: auto; overflow-y: hidden; height: 14px; background: #FBFAF7; border-bottom: 1px solid var(--line); }
 .tbl-scroll-top-inner { height: 1px; }
 .tbl-scroll-top::-webkit-scrollbar { height: 9px; }
 .tbl-scroll-top::-webkit-scrollbar-thumb { background: #C9C2B4; border-radius: 6px; }
@@ -301,6 +301,7 @@ table.mtx tbody td { border-bottom: 1px solid #F0EDE6; text-align: center; heigh
     <button class="tab" data-view="v-priceinc">📈 Tiến độ ngấm giá</button>
     <button class="tab" data-view="v-health">⚔️ Sức khoẻ giá</button>
     <button class="tab" data-view="v-drill">🔎 Khoan sâu SP</button>
+    <button class="tab" data-view="v-competitor">🥊 Đối thủ</button>
     <button class="tab" data-view="v-action">🔔 Cần hành động <span class="tab-badge" id="action-count" style="display:none">0</span></button>
   </div>
 </div>
@@ -348,7 +349,7 @@ table.mtx tbody td { border-bottom: 1px solid #F0EDE6; text-align: center; heigh
 
     <div class="card">
       <div class="card-head"><h3>Tổng quan giá theo giai đoạn</h3>
-        <span class="sub">Giá DGM gốc → sau đợt 1 (01/03) → sau đợt 2 (01/06) · chênh lệch MT vs GT</span>
+        <span class="sub">Giá DGM gốc → sau đợt 1 (01/03) → sau đợt 2 (01/06) · chênh lệch MT vs GT (đồng & %)</span>
         <div class="spacer"></div>
         <span class="legend"><span><span class="dot-st gray"></span>Δ = MT − GT</span></span>
       </div>
@@ -426,6 +427,21 @@ table.mtx tbody td { border-bottom: 1px solid #F0EDE6; text-align: center; heigh
       </div>
     </div>
     <div id="act-content"></div>
+  </div>
+
+  <!-- VIEW 6: COMPETITOR LANDSCAPE -->
+  <div class="view" id="v-competitor">
+    <div id="comp-kpi" class="kpi-row"></div>
+    <div class="filterbar">
+      <div class="fseg" id="comp-chan">
+        <button class="active" data-c="ALL">Tất cả kênh</button>
+        <button data-c="MT">MT</button>
+        <button data-c="GT">GT</button>
+      </div>
+      <div class="spacer" style="flex:1"></div>
+      <span class="sub" style="font-size:11px;color:var(--muted)">Dữ liệu từ survey đối thủ · giá NTD gần nhất</span>
+    </div>
+    <div id="comp-content"></div>
   </div>
 
   <div class="foot" id="foot">DGM Price Intelligence · dữ liệu cập nhật từ Google Sheets</div>
@@ -517,7 +533,8 @@ document.getElementById('tabnav').addEventListener('click', e => {
   document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
   t.classList.add('active');
   document.getElementById(t.dataset.view).classList.add('active');
-  if(t.dataset.view==='v-catalog' && MODEL && MODEL.catalogModel) enhanceScrolls();
+  if(t.dataset.view==='v-catalog' && MODEL && MODEL.catalogModel){ enhanceScrolls(); setTimeout(enhanceScrolls, 60); }
+  if(t.dataset.view==='v-competitor' && MODEL && MODEL.competitorModel) renderCompetitor();
 });
 window.addEventListener('resize', ()=>{ if(MODEL && MODEL.catalogModel && document.getElementById('v-catalog').classList.contains('active')) enhanceScrolls(); });
 
@@ -583,6 +600,9 @@ function buildModel(raw) {
   // ════ CATALOG: giá DGM theo 3 giai đoạn ════
   const catalogModel = buildCatalog(ownProducts, events, outlets, svList, pilList);
 
+  // ════ COMPETITOR LANDSCAPE ════
+  const competitorModel = buildCompetitor(svList, ownProducts);
+
   // KPI tổng
   const activeSkus = ownProducts.length;
   const mtOutlets = outlets.filter(o=>o.kenh==='MT' && (o.trang_thai||'').toLowerCase()!=='inactive').length;
@@ -590,10 +610,68 @@ function buildModel(raw) {
 
   return {
     ownProducts, prodById, outlets, events, svList, pilList,
-    marginRows, distModel, priceIncModel, healthModel, alerts, catalogModel,
+    marginRows, distModel, priceIncModel, healthModel, alerts, catalogModel, competitorModel,
     kpi: { activeSkus, mtOutlets, gtOutlets },
     generatedAt: raw.generatedAt,
   };
+}
+
+/* ── COMPETITOR LANDSCAPE: đối thủ theo nhóm ngành hàng ──
+   Từ survey (phan_loai='competitor') + own brand làm chuẩn định vị.
+   Cho mỗi nhóm: liệt kê brand, số mã (SKU distinct), kênh phân phối, giá/100đv TB,
+   vị thế giá so với Ayam (cao hơn / ngang / thấp hơn). */
+function buildCompetitor(svList, ownProducts){
+  const groups = {};   // nhom → { brands: {brandName → {...}}, ayamPpu, ayamSku }
+  svList.forEach(s=>{
+    const nhom = s.loai_san_pham || s.nhom_san_pham || guessGroup(s.ten_san_pham);
+    if(!nhom) return;
+    const isOwn = s.phan_loai==='own_brand';
+    const brand = (s.ten_thuong_hieu||'').trim() || (isOwn?'Ayam Brand':'(không tên)');
+    const ppu = num(s.quy_cach)>0 ? num(s.gia)/num(s.quy_cach) : null;   // đ/đơn vị
+    if(!groups[nhom]) groups[nhom] = { brands:{} };
+    const key = (isOwn?'★Ayam Brand':brand);
+    const b = groups[nhom].brands[key] || (groups[nhom].brands[key] = {
+      brand: isOwn?'Ayam Brand':brand, own:isOwn,
+      skus:new Set(), channels:new Set(), ppus:[], prices:[], outlets:new Set(),
+      hsds:[], sizes:new Set(), origins:new Set()
+    });
+    if(s.ten_san_pham) b.skus.add(shortName(s.ten_san_pham));
+    if(s.kenh) b.channels.add(s.kenh);
+    if(ppu) b.ppus.push(ppu);
+    if(num(s.gia)) b.prices.push(num(s.gia));
+    if(s.ten_diem_ban) b.outlets.add(s.ten_diem_ban);
+    const hsd = shelfLifeMonths(s.ngay_sx, s.han_su_dung); if(hsd) b.hsds.push(hsd);
+    if(s.quy_cach) b.sizes.add((s.quy_cach||'')+(s.don_vi||''));
+    if(s.nsx_nha_phan_phoi) b.origins.add(s.nsx_nha_phan_phoi);
+  });
+
+  // tổng hợp + định vị
+  const out = {};
+  Object.keys(groups).forEach(nhom=>{
+    const brandsObj = groups[nhom].brands;
+    const list = Object.values(brandsObj).map(b=>({
+      brand: b.brand, own: b.own,
+      skuCount: b.skus.size,
+      channels: [...b.channels].sort(),
+      avgPpu: b.ppus.length ? b.ppus.reduce((s,v)=>s+v,0)/b.ppus.length : null,
+      avgPrice: b.prices.length ? b.prices.reduce((s,v)=>s+v,0)/b.prices.length : null,
+      avgHsd: b.hsds.length ? Math.round(b.hsds.reduce((s,v)=>s+v,0)/b.hsds.length) : null,
+      sizes: [...b.sizes].slice(0,4),
+      outletCount: b.outlets.size,
+    }));
+    const ayam = list.find(x=>x.own);
+    const ayamPpu = ayam? ayam.avgPpu : null;
+    list.forEach(x=>{
+      if(x.own || !x.avgPpu || !ayamPpu){ x.posPct=null; x.pos='—'; return; }
+      const d = (x.avgPpu - ayamPpu)/ayamPpu*100;   // + = đắt hơn Ayam
+      x.posPct = d;
+      x.pos = d > 10 ? 'premium' : d < -10 ? 'value' : 'parity';   // ±10% = ngang
+    });
+    // sắp xếp: Ayam trước, còn lại theo giá/đơn vị giảm dần
+    list.sort((a,b)=> (b.own?1:0)-(a.own?1:0) || (b.avgPpu||0)-(a.avgPpu||0));
+    out[nhom] = { brands:list, ayamPpu, ayamSku: ayam?ayam.skuCount:0, ayamHsd: ayam?ayam.avgHsd:null };
+  });
+  return out;
 }
 
 /* ── MARGIN ── */
@@ -774,7 +852,11 @@ function buildHealth(svList, prodById) {
       name: shortName(s.ten_san_pham),
       price: num(s.gia), size: num(s.quy_cach), unit: s.don_vi||'g',
       outlet: s.ten_diem_ban, kenh: s.kenh,
+      quycach: (s.quy_cach? s.quy_cach : '') + (s.don_vi||''),
+      baobi: s.bao_bi||'',
+      hsd: shelfLifeMonths(s.ngay_sx, s.han_su_dung),   // số tháng HSD (từ NSX→HSD hoặc text)
       pricePerUnit: num(s.quy_cach)>0 ? num(s.gia)/num(s.quy_cach) : null,
+      per100: num(s.quy_cach)>0 ? num(s.gia)/num(s.quy_cach)*100 : null,  // đ/100 đơn vị (so sánh công bằng)
     };
     if(s.phan_loai==='own_brand') groups[nhom].own.push(entry);
     else groups[nhom].comp.push(entry);
@@ -791,6 +873,21 @@ function guessGroup(name){
   if(/cà chua|tomato/.test(n))return'Tomato';
   if(/sốt|sauce|sriracha/.test(n))return'Asian Sauce';
   return'Khác';
+}
+/* Parse ngày VN: dd/mm/yyyy, dd.mm.yyyy, yyyy-mm-dd */
+function parseVNDate(s){
+  s=String(s||'').trim(); if(!s) return null; let m;
+  if(m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)) return new Date(+m[1],+m[2]-1,+m[3]);
+  if(m=s.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})/)) return new Date(+m[3],+m[2]-1,+m[1]);
+  return null;
+}
+/* HSD theo tháng: ưu tiên NSX→HSD (ngày), fallback text "36 tháng"/"3 năm" */
+function shelfLifeMonths(ngay_sx, han_su_dung){
+  const d1=parseVNDate(ngay_sx), d2=parseVNDate(han_su_dung);
+  if(d1&&d2&&d2>d1) return Math.round((d2-d1)/(30.44*86400000));
+  const m=String(han_su_dung||'').match(/(\d+)\s*(tháng|thang|month|năm|nam|year)/i);
+  if(m){ let n=+m[1]; if(/năm|nam|year/i.test(m[2])) n*=12; return n; }
+  return null;
 }
 
 /* ── ALERTS ── */
@@ -1011,7 +1108,7 @@ function delayClass(d){
 /* ════════════════════════════════════════════════════
    RENDERERS
    ════════════════════════════════════════════════════ */
-let ovChan='ALL', hChan='ALL', actSev='ALL', drillGroup=null;
+let ovChan='ALL', hChan='ALL', actSev='ALL', drillGroup=null, compChan='ALL';
 
 function renderAll(){
   renderOverview();
@@ -1019,10 +1116,12 @@ function renderAll(){
   renderPriceIncInit();
   renderHealth();
   renderDrillInit();
+  renderCompetitor();
   renderAction();
   // filter listeners
   bindSeg('ov-chan', c=>{ovChan=c; renderOverview();});
   bindSeg('h-chan', c=>{hChan=c; renderHealth();});
+  bindSeg('comp-chan', c=>{compChan=c; renderCompetitor();});
   bindSeg('act-sev', c=>{actSev=c; renderAction();}, 's');
 }
 function bindSeg(id, cb, attr){
@@ -1182,18 +1281,22 @@ function renderHealth(){
     const allEntries = [...own.map(o=>({...o,own:true})), ...comp.map(o=>({...o,own:false}))]
       .filter(e=>e.pricePerUnit).sort((a,b)=>a.pricePerUnit-b.pricePerUnit);
     const maxPpu = Math.max(...allEntries.map(e=>e.pricePerUnit), 0.001);
-    html += `<div class="card"><div class="card-head"><h3>${nhom}</h3><span class="sub">${own.length} own · ${comp.length} đối thủ · giá/đơn vị</span></div>
+    html += `<div class="card"><div class="card-head"><h3>${nhom}</h3><span class="sub">${own.length} own · ${comp.length} đối thủ · giá/đơn vị · quy cách · HSD</span></div>
       <div class="card-body flush"><div class="tbl-scroll"><table class="dt"><thead><tr>
-      <th>Thương hiệu</th><th>Sản phẩm</th><th>Điểm bán</th><th class="num">Giá</th><th class="num">đ/đơn vị</th><th style="width:140px">So với own TB</th></tr></thead><tbody>`;
+      <th>Thương hiệu</th><th>Sản phẩm</th><th class="ctr">Quy cách</th><th class="ctr">HSD</th><th>Điểm bán</th><th class="num">Giá</th><th class="num">đ/100</th><th style="width:130px">So với own TB</th></tr></thead><tbody>`;
     allEntries.forEach(e=>{
       const diff = ownAvg ? (e.pricePerUnit-ownAvg)/ownAvg*100 : 0;
       const barPct = e.pricePerUnit/maxPpu*100;
+      const hsdTxt = e.hsd? (e.hsd>=12 ? (e.hsd/12).toFixed(e.hsd%12?1:0)+'n' : e.hsd+'th') : '—';
+      const hsdTitle = e.hsd? `${e.hsd} tháng` : 'chưa có NSX/HSD';
       html += `<tr style="${e.own?'background:rgba(27,58,87,.03)':''}">
         <td class="strong">${e.own?'<span class="pill blue">Ayam</span> ':''}${e.brand||'—'}</td>
         <td>${e.name}</td>
+        <td class="ctr" style="font-size:11px">${e.quycach||'—'}</td>
+        <td class="ctr" style="font-size:11px" title="${hsdTitle}">${hsdTxt}</td>
         <td style="font-size:11px;color:var(--muted)">${e.outlet}</td>
         <td class="num strong">${fmtVnd(e.price)}</td>
-        <td class="num">${e.pricePerUnit.toFixed(0)}</td>
+        <td class="num">${e.per100!==null?fmtVnd(e.per100):'—'}</td>
         <td><div class="barwrap"><div class="bartrack"><div class="barfill ${e.own?'navy':diff<-TH.compRed?'rose':'amber'}" style="width:${barPct}%"></div></div>
           <span style="font-size:10.5px;font-family:var(--mono);width:42px;text-align:right;color:${diff<-TH.compRed?'var(--rose)':'var(--muted)'}">${e.own?'—':(diff>0?'+':'')+diff.toFixed(0)+'%'}</span></div></td>
       </tr>`;
@@ -1201,6 +1304,91 @@ function renderHealth(){
     html += `</tbody></table></div></div></div>`;
   });
   document.getElementById('health-content').innerHTML = any?html:emptyState('Chưa có dữ liệu giá đối thủ. Cần survey thêm.');
+}
+
+/* ── TAB: ĐỐI THỦ CẠNH TRANH ── */
+function renderCompetitor(){
+  // lọc theo kênh rồi dựng lại model
+  let sv = MODEL.svList;
+  if(compChan!=='ALL') sv = sv.filter(s=>s.kenh===compChan);
+  const model = buildCompetitor(sv, MODEL.ownProducts);
+  const keys = Object.keys(model).sort((a,b)=>NHOM_ORDER.indexOf(a)-NHOM_ORDER.indexOf(b));
+
+  // KPI tổng
+  const allBrands = new Set(), allCompSku = new Set(); let catWithComp=0;
+  keys.forEach(nhom=>{
+    const comps = model[nhom].brands.filter(b=>!b.own);
+    if(comps.length) catWithComp++;
+    comps.forEach(b=>{ allBrands.add(b.brand); });
+  });
+  sv.filter(s=>s.phan_loai!=='own_brand').forEach(s=>{ if(s.ten_san_pham) allCompSku.add((s.ten_thuong_hieu||'')+'|'+shortName(s.ten_san_pham)); });
+  document.getElementById('comp-kpi').innerHTML = [
+    kpi('Đối thủ', allBrands.size, ' brand', 'navy', 'Xuất hiện trong survey'),
+    kpi('Mã đối thủ', allCompSku.size, ' SKU', 'blue', 'Đã survey giá'),
+    kpi('Nhóm có đối thủ', catWithComp, '', 'amber', 'Trên tổng '+keys.length+' nhóm'),
+    kpi('Kênh', compChan==='ALL'?'MT+GT':compChan, '', 'green', 'Đang lọc'),
+  ].join('');
+
+  let html='', any=false;
+  keys.forEach(nhom=>{
+    const g = model[nhom];
+    const comps = g.brands.filter(b=>!b.own);
+    if(!comps.length && !g.brands.some(b=>b.own)) return;
+    any=true;
+    // thang định vị: min..max đ/đơn vị
+    const ppus = g.brands.map(b=>b.avgPpu).filter(v=>v);
+    const lo = Math.min(...ppus, Infinity), hi = Math.max(...ppus, 0);
+    const span = (hi>lo)?(hi-lo):1;
+    const posOf = v => v? Math.round((v-lo)/span*100) : 0;
+
+    // strip định vị
+    let strip = `<div style="position:relative;height:46px;margin:4px 12px 14px">
+      <div style="position:absolute;top:22px;left:0;right:0;height:3px;background:linear-gradient(90deg,#E8F0E8,#FBF0E0,#FBE0E0);border-radius:3px"></div>
+      <div style="position:absolute;top:32px;left:0;font-size:9px;color:var(--muted-2)">rẻ ◄ ${fmtVnd(lo)}đ/đv</div>
+      <div style="position:absolute;top:32px;right:0;font-size:9px;color:var(--muted-2)">${fmtVnd(hi)}đ/đv ► đắt</div>`;
+    g.brands.filter(b=>b.avgPpu).forEach(b=>{
+      const left = posOf(b.avgPpu);
+      const col = b.own?'var(--navy)':b.pos==='value'?'var(--rose)':b.pos==='premium'?'var(--amber)':'var(--muted)';
+      strip += `<div title="${b.brand}: ${fmtVnd(b.avgPpu)}đ/đv" style="position:absolute;top:6px;left:${left}%;transform:translateX(-50%);text-align:center">
+        <div style="width:${b.own?12:9}px;height:${b.own?12:9}px;border-radius:50%;background:${col};margin:0 auto;border:2px solid #fff;box-shadow:0 0 0 1px ${col}"></div>
+        <div style="font-size:8.5px;white-space:nowrap;margin-top:1px;color:${col};font-weight:${b.own?700:400};max-width:70px;overflow:hidden;text-overflow:ellipsis">${b.own?'★ Ayam':b.brand}</div>
+      </div>`;
+    });
+    strip += `</div>`;
+
+    // bảng
+    const posBadge = b => {
+      if(b.own) return '<span class="pill blue">Ayam (chuẩn)</span>';
+      if(b.pos==='premium') return `<span class="pill amber">Cao cấp +${b.posPct.toFixed(0)}%</span>`;
+      if(b.pos==='value')   return `<span class="pill rose">Giá thấp ${b.posPct.toFixed(0)}%</span>`;
+      if(b.pos==='parity')  return `<span class="pill gray">Ngang ${b.posPct>0?'+':''}${b.posPct.toFixed(0)}%</span>`;
+      return '<span class="pill gray">—</span>';
+    };
+    const chBadge = chs => chs.map(c=>`<span class="pill ${c==='MT'?'blue':'green'}" style="padding:1px 6px">${c}</span>`).join(' ')||'—';
+
+    let rows='';
+    g.brands.forEach(b=>{
+      rows += `<tr style="${b.own?'background:rgba(27,58,87,.04)':''}">
+        <td class="strong">${b.own?'★ ':''}${b.brand}</td>
+        <td class="ctr">${b.skuCount}</td>
+        <td class="ctr">${chBadge(b.channels)}</td>
+        <td class="ctr" style="font-size:10.5px;color:var(--muted)">${b.sizes.join(', ')||'—'}</td>
+        <td class="ctr">${b.avgHsd?(b.avgHsd>=12?(b.avgHsd/12).toFixed(b.avgHsd%12?1:0)+'n':b.avgHsd+'th'):'—'}</td>
+        <td class="num strong">${b.avgPpu?fmtVnd(Math.round(b.avgPpu*100)):'—'}</td>
+        <td class="ctr">${posBadge(b)}</td>
+      </tr>`;
+    });
+
+    html += `<div class="card">
+      <div class="card-head"><h3>${nhom}</h3><span class="sub">${comps.length} đối thủ · định vị theo giá/đơn vị so với Ayam</span></div>
+      ${strip}
+      <div class="card-body flush"><div class="tbl-scroll"><table class="dt"><thead><tr>
+        <th>Thương hiệu</th><th class="ctr">Số mã</th><th class="ctr">Kênh</th><th class="ctr">Quy cách</th><th class="ctr">HSD</th><th class="num">đ/100đv</th><th class="ctr">Vị thế vs Ayam</th>
+      </tr></thead><tbody>${rows}</tbody></table></div></div>
+    </div>`;
+  });
+  document.getElementById('comp-content').innerHTML = any?html
+    : emptyState('Chưa có dữ liệu đối thủ trong kênh này. Cần survey thêm sản phẩm đối thủ.');
 }
 
 /* ── TAB 4: DRILL ── */
@@ -1344,6 +1532,13 @@ function renderCatOverview(){
     byNhom[nhom].forEach(r=>{
       const gap = v => v===null?'—':(v>0?'+':'')+fmtVnd(v);
       const gapCls = v => v===null?'':(Math.abs(v)>3000?'color:var(--amber);font-weight:600':'');
+      // chênh lệch % MT so với GT = (MT−GT)/GT
+      const gapPct = (mt,gt)=> (mt&&gt)? ((mt-gt)/gt*100) : null;
+      const gpCell = (abs, mt, gt) => {
+        if(abs===null) return '—';
+        const p = gapPct(mt,gt);
+        return `${(abs>0?'+':'')+fmtVnd(abs)}<div style="font-size:9.5px;color:var(--muted-2);font-family:var(--mono)">${p!==null?(p>0?'+':'')+p.toFixed(1)+'%':''}</div>`;
+      };
       html += `<tr>
         <td class="strong">${r.sku}</td>
         <td style="font-size:11px;color:var(--muted)">${r.xuatxu}</td>
@@ -1353,9 +1548,9 @@ function renderCatOverview(){
         <td class="num" style="border-left:2px solid var(--line)">${fmtVnd(r.gt.base)}</td>
         <td class="num">${fmtVnd(r.gt.d1)}</td>
         <td class="num strong">${fmtVnd(r.gt.d2)}</td>
-        <td class="num" style="border-left:2px solid var(--line);${gapCls(r.gapBase)}">${gap(r.gapBase)}</td>
-        <td class="num" style="${gapCls(r.gapD1)}">${gap(r.gapD1)}</td>
-        <td class="num" style="${gapCls(r.gapD2)}">${gap(r.gapD2)}</td>
+        <td class="num" style="border-left:2px solid var(--line);${gapCls(r.gapBase)}">${gpCell(r.gapBase, r.mt.base, r.gt.base)}</td>
+        <td class="num" style="${gapCls(r.gapD1)}">${gpCell(r.gapD1, r.mt.d1, r.gt.d1)}</td>
+        <td class="num" style="${gapCls(r.gapD2)}">${gpCell(r.gapD2, r.mt.d2, r.gt.d2)}</td>
       </tr>`;
     });
   });
