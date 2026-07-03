@@ -2241,18 +2241,36 @@ function puRenderSkuList() {
   const channel = puState.event?.kenh || 'MT';
   const isGT    = channel === 'GT';
 
-  const groups = {};
-  puState.products.forEach(p => {
-    const g = p.nhom_san_pham || 'Khác';
-    if (!groups[g]) groups[g] = [];
-    groups[g].push(p);
-  });
+  // SKU nằm trong đợt tăng giá (từ Price_Events) — đưa lên đầu để sales điền đúng trọng tâm
+  const evSkuSet = new Set(
+    (puState.event?.rows || []).map(r => r.ma_san_pham).filter(Boolean)
+  );
+  const inEvent  = puState.products.filter(p => evSkuSet.has(p.ma_san_pham));
+  const outEvent = puState.products.filter(p => !evSkuSet.has(p.ma_san_pham));
 
   let html = '';
-  Object.entries(groups).forEach(([grp, prods]) => {
-    html += `<div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;padding:8px 2px 5px;">${grp}</div>`;
-    prods.forEach(p => { html += puBuildSkuCard(p, isGT); });
-  });
+
+  if (inEvent.length) {
+    html += `<div style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;padding:8px 2px 5px;">📌 SKU trong đợt tăng giá (${inEvent.length})</div>`;
+    inEvent.forEach(p => { html += puBuildSkuCard(p, isGT); });
+  }
+
+  const restList = inEvent.length ? outEvent : puState.products;
+  if (restList.length) {
+    if (inEvent.length) {
+      html += `<div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;padding:12px 2px 5px;border-top:1px dashed #e5e7eb;margin-top:8px;">SKU khác — chỉ điền nếu có thay đổi</div>`;
+    }
+    const groups = {};
+    restList.forEach(p => {
+      const g = p.nhom_san_pham || 'Khác';
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(p);
+    });
+    Object.entries(groups).forEach(([grp, prods]) => {
+      html += `<div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;padding:8px 2px 5px;">${grp}</div>`;
+      prods.forEach(p => { html += puBuildSkuCard(p, isGT); });
+    });
+  }
 
   listEl.innerHTML = html;
   puUpdateSummary();
@@ -2382,7 +2400,7 @@ function puBuildSkuCard(p, isGT) {
       <div id="pu-price-section-${id}" style="display:none;">
         ${priceFields}
         <div class="pu-date-wrap">
-          <div class="pu-field-label">Ngày khách áp dụng giá mới</div>
+          <div class="pu-field-label">Ngày khách áp dụng giá mới <span style="font-size:10px;color:#9ca3af;font-weight:400;">— tự điền hôm nay khi nhập giá NTD, sửa lại nếu khác</span></div>
           <input type="date" id="pu-date-${id}"
             oninput="puOnInput('${id}','ngay_ap_dung',this.value)">
         </div>
@@ -2444,6 +2462,19 @@ function puOnInput(id, field, val) {
   if (field === 'gia_ntd_sau') {
     const el = document.getElementById('pu-ntd-a-' + id);
     if (el) el.classList.toggle('missing', !val);
+
+    // Tự điền "Ngày khách áp dụng giá mới" = hôm nay khi đã có giá NTD sau
+    // (sales có thể sửa lại nếu ngày thực tế khác). Tránh trường hợp dashboard
+    // kẹt ở "Đang xử lý" vĩnh viễn vì thiếu ngày áp dụng.
+    if (val && Number(val) > 0 && !inp.ngay_ap_dung) {
+      const t = new Date();
+      const iso = t.getFullYear() + '-'
+        + String(t.getMonth() + 1).padStart(2, '0') + '-'
+        + String(t.getDate()).padStart(2, '0');
+      inp.ngay_ap_dung = iso;
+      const dEl = document.getElementById('pu-date-' + id);
+      if (dEl && !dEl.value) dEl.value = iso;
+    }
   }
 
   puUpdateCard(id);
@@ -2498,6 +2529,9 @@ function puUpdateSummary() {
   const missingNtd = inputs.filter(x =>
     x.status === 'tang_gia' && x.gia_dgm_sau && !x.gia_ntd_sau
   ).length;
+  const missingDate = inputs.filter(x =>
+    x.status === 'tang_gia' && x.gia_ntd_sau && !x.ngay_ap_dung
+  ).length;
 
   const pct = total ? Math.round(filled / total * 100) : 0;
   const bar = document.getElementById('pu-list-prog-bar');
@@ -2505,7 +2539,12 @@ function puUpdateSummary() {
   const txt = document.getElementById('pu-list-prog-text');
   if (txt) txt.textContent = `${filled} / ${total} SKU đã điền`;
   const warnTxt = document.getElementById('pu-list-warn-count');
-  if (warnTxt) warnTxt.textContent = missingNtd ? `⚠️ ${missingNtd} thiếu NTD` : '';
+  if (warnTxt) {
+    const warns = [];
+    if (missingNtd)  warns.push(`⚠️ ${missingNtd} thiếu NTD`);
+    if (missingDate) warns.push(`📅 ${missingDate} thiếu ngày áp dụng`);
+    warnTxt.textContent = warns.join(' · ');
+  }
 
   const cntDone = document.getElementById('pu-cnt-done'); if (cntDone) cntDone.textContent = filled + ' đã điền';
   const e1 = document.getElementById('pu-cnt-tang');  if (e1) e1.textContent = tang;

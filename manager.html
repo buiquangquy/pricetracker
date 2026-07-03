@@ -545,6 +545,7 @@ document.addEventListener('DOMContentLoaded', () => boot());
    ANALYTICS ENGINE — buildModel()
    ════════════════════════════════════════════════════ */
 function num(v){ const n = Number(String(v||'').replace(/[,\s]/g,'')); return isFinite(n) ? n : 0; }
+function nrmName(s){ return String(s||'').trim().replace(/\s+/g,' ').toLowerCase(); }
 function fmtVnd(v){ return v ? Math.round(v).toLocaleString('vi-VN') : '—'; }
 function fmtPct(v, d){ return (v===null||v===undefined||!isFinite(v)) ? '—' : v.toFixed(d===undefined?1:d) + '%'; }
 function shortName(s){ return String(s||'').replace(' - Vietnam','').replace(/\s+/g,' ').trim(); }
@@ -797,13 +798,28 @@ function buildPriceInc(events, pilList, svList, outlets) {
     custList = [...new Set(custList)];
 
     const rows = custList.map(cust => {
-      // PIL của khách này trong đợt
-      const pilHits = pilList.filter(p => p.ma_tang_gia===evId && p.ten_diem_ban===cust && prodMaSet.has(p.ma_san_pham));
+      // PIL của khách này trong đợt — match theo ma_tang_gia + tên điểm bán (chuẩn hoá
+      // trim/khoảng trắng/hoa-thường). KHÔNG lọc theo prodMaSet nữa: app survey cho phép
+      // sales nhập mọi SKU own-brand, nên PIL ngoài danh sách Price_Events vẫn phải được tính
+      // (đây là lý do trước đây có khách "đã cập nhật nhưng dashboard không lên").
+      const custKey = nrmName(cust);
+      const pilHits = pilList.filter(p => p.ma_tang_gia===evId && nrmName(p.ten_diem_ban)===custKey);
       const tangHits = pilHits.filter(p=>p.status_san_pham==='tang_gia');
+      const extraSku = tangHits.filter(p=>!prodMaSet.has(p.ma_san_pham)).length; // SKU nằm ngoài Price_Events (chỉ để hiển thị)
       const applied = pilHits.filter(p=>p.ngay_ap_dung);
       // ngày khách áp dụng = sớm nhất trong các mã đã có ngày
       let custApplyDate = '';
+      let approxDate = false;
       applied.forEach(p => { if(!custApplyDate || p.ngay_ap_dung<custApplyDate) custApplyDate=p.ngay_ap_dung; });
+      // Fallback: sales đã nhập giá NTD sau (giá mới đã lên kệ) nhưng quên điền
+      // "Ngày khách áp dụng giá mới" → coi như ĐÃ ÁP GIÁ, lấy ngày nhập app làm ngày ước tính.
+      if(!custApplyDate){
+        tangHits.filter(p => num(p.gia_ntd_sau)>0 && p.ngay_nhap).forEach(p => {
+          const d = String(p.ngay_nhap).slice(0,10);
+          if(!custApplyDate || d<custApplyDate) custApplyDate = d;
+        });
+        if(custApplyDate) approxDate = true;
+      }
       const delay = custApplyDate && anchorDate ? daysBetween(anchorDate, custApplyDate) : null;
       // pass-through trung bình: (ntd_sau-ntd_truoc)/(dgm_sau-dgm_truoc)
       let ptSum=0, ptN=0;
@@ -821,7 +837,7 @@ function buildPriceInc(events, pilList, svList, outlets) {
       if(!pilHits.length) status='notstarted';
       else if(custApplyDate) status='applied';
       else status='inprogress';
-      return { cust, status, delay, passThrough, kmTotal, applyDate:custApplyDate, skuCount:tangHits.length };
+      return { cust, status, delay, passThrough, kmTotal, applyDate:custApplyDate, approx:approxDate, extraSku, skuCount:tangHits.length };
     });
 
     // tổng hợp đợt
@@ -1252,11 +1268,17 @@ function renderPriceInc(){
     const stPill = r.status==='applied'?'<span class="pill green">✓ Đã áp giá</span>'
                  : r.status==='inprogress'?'<span class="pill amber">⏳ Đang xử lý</span>'
                  : '<span class="pill gray">○ Chưa bắt đầu</span>';
+    const dateCell = r.applyDate
+      ? (r.approx
+          ? `<span title="Sales chưa điền ngày áp dụng — ước tính theo ngày nhập app">≈ ${new Date(r.applyDate).toLocaleDateString('vi-VN')}</span>`
+          : new Date(r.applyDate).toLocaleDateString('vi-VN'))
+      : '—';
+    const extraNote = r.extraSku ? ` <span style="font-size:10px;color:var(--muted)" title="${r.extraSku} SKU sales nhập nằm ngoài danh sách Price_Events của đợt này">(+${r.extraSku} SKU ngoài đợt)</span>` : '';
     html += `<tr>
-      <td class="strong">${r.cust}</td>
+      <td class="strong">${r.cust}${extraNote}</td>
       <td class="ctr">${stPill}</td>
-      <td class="ctr" style="font-family:var(--mono);font-size:11px">${r.applyDate?new Date(r.applyDate).toLocaleDateString('vi-VN'):'—'}</td>
-      <td class="ctr">${r.delay!==null?`<span class="mcell ${delayClass(r.delay)}">${r.delay}d</span>`:'<span class="mcell gray">—</span>'}</td>
+      <td class="ctr" style="font-family:var(--mono);font-size:11px">${dateCell}</td>
+      <td class="ctr">${r.delay!==null?`<span class="mcell ${delayClass(r.delay)}" ${r.approx?'title="Delay ước tính theo ngày nhập app"':''}>${r.approx?'≈':''}${r.delay}d</span>`:'<span class="mcell gray">—</span>'}</td>
       <td class="ctr">${r.passThrough!==null?fmtPct(r.passThrough,0):'<span style="color:var(--muted-2)">—</span>'}</td>
       ${ev.kenh==='MT'?`<td class="num">${r.kmTotal?fmtVnd(r.kmTotal):'<span style="color:var(--muted-2)">0</span>'}</td>`:''}
     </tr>`;
