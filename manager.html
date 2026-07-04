@@ -832,12 +832,19 @@ function buildPriceInc(events, pilList, svList, outlets) {
       // chi phí KM (MT)
       let kmTotal = 0;
       tangHits.forEach(p => kmTotal += num(p.chi_phi_km));
-      // trạng thái
+      // trạng thái:
+      // - notstarted : chưa có PIL nào (sales chưa cập nhật)
+      // - nokd       : sales ĐÃ xác nhận nhưng toàn bộ mã đều "Chưa KD"/"Đã ngưng" → khách không kinh doanh mã trong đợt
+      // - notang     : sales ĐÃ xác nhận, có mã đang KD nhưng tất cả "Không tăng giá" → không cần áp giá
+      // - inprogress : có mã "Tăng giá" nhưng chưa có ngày/giá NTD cuối
+      // - applied    : đã áp giá mới
+      const ktCount  = pilHits.filter(p=>p.status_san_pham==='khong_tang').length;
+      const ckdCount = pilHits.filter(p=>p.status_san_pham==='chua_kd' || p.status_san_pham==='da_ngung').length;
       let status;
       if(!pilHits.length) status='notstarted';
-      else if(custApplyDate) status='applied';
-      else status='inprogress';
-      return { cust, status, delay, passThrough, kmTotal, applyDate:custApplyDate, approx:approxDate, extraSku, skuCount:tangHits.length };
+      else if(tangHits.length) status = custApplyDate ? 'applied' : 'inprogress';
+      else status = ktCount ? 'notang' : 'nokd';
+      return { cust, status, delay, passThrough, kmTotal, applyDate:custApplyDate, approx:approxDate, extraSku, skuCount:tangHits.length, ktCount, ckdCount };
     });
 
     // tổng hợp đợt
@@ -845,11 +852,13 @@ function buildPriceInc(events, pilList, svList, outlets) {
     const avgDelay = appliedRows.length ? Math.round(appliedRows.reduce((s,r)=>s+(r.delay||0),0)/appliedRows.length) : null;
     const totalKm = rows.reduce((s,r)=>s+r.kmTotal,0);
     const doneCount = appliedRows.length;
+    const noActionCount = rows.filter(r=>r.status==='nokd' || r.status==='notang').length; // đã xác nhận, không cần áp giá
+    const needCount = rows.length - noActionCount; // số khách thực sự cần áp giá
 
     result[evId] = {
       id:evId, name:meta.ten_su_kien, kenh, anchorDate,
       pct:num(meta.phan_tram_tang), prodNames,
-      rows, avgDelay, totalKm, doneCount, totalCust:rows.length,
+      rows, avgDelay, totalKm, doneCount, totalCust:rows.length, noActionCount, needCount,
     };
   });
   return result;
@@ -1243,30 +1252,86 @@ function renderPriceIncInit(){
   const sel = document.getElementById('pi-event');
   const evs = Object.values(MODEL.priceIncModel);
   if(!evs.length){ sel.innerHTML='<option>Không có đợt active</option>'; document.getElementById('pi-content').innerHTML=emptyState('Chưa có đợt tăng giá đang chạy'); return; }
-  sel.innerHTML = evs.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  sel.innerHTML = evs.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')
+    + '<option disabled>────────────</option>'
+    + '<option value="__ALL_MT__">📊 Tất cả đợt — MT (hiện trạng)</option>'
+    + '<option value="__ALL_GT__">📊 Tất cả đợt — GT (hiện trạng)</option>'
+    + '<option value="__ALL__">📊 Tất cả đợt — MT + GT (hiện trạng)</option>';
   renderPriceInc();
+}
+
+/* ── View tổng hợp: hiện trạng MỚI NHẤT của từng khách qua tất cả các đợt ──
+   Mỗi khách 1 dòng, lấy từ đợt gần nhất (theo ngày áp dụng); nếu đợt mới nhất
+   khách chưa cập nhật nhưng đợt cũ hơn có dữ liệu → lấy đợt có dữ liệu gần nhất. */
+function buildAggInc(scope){ // scope: 'MT' | 'GT' | null (= cả hai)
+  const evs = Object.values(MODEL.priceIncModel)
+    .filter(e => !scope || e.kenh===scope)
+    .sort((a,b)=>String(b.anchorDate||'').localeCompare(String(a.anchorDate||''))); // mới → cũ
+  if(!evs.length) return null;
+
+  const byCust = {};
+  evs.forEach(ev => {
+    ev.rows.forEach(r => {
+      const key = ev.kenh + '|' + nrmName(r.cust);
+      const cand = {...r, evName:ev.name, evAnchor:ev.anchorDate, kenh:ev.kenh};
+      const cur = byCust[key];
+      if(!cur){ byCust[key] = cand; return; }
+      // cur luôn thuộc đợt mới hơn (evs đã sort). Chỉ thay khi đợt mới chưa có dữ liệu
+      // mà đợt cũ hơn thì có → phản ánh hoạt động gần nhất của khách.
+      if(cur.status==='notstarted' && cand.status!=='notstarted') byCust[key] = cand;
+    });
+  });
+  const rows = Object.values(byCust);
+
+  const appliedRows = rows.filter(r=>r.status==='applied');
+  const avgDelay = appliedRows.length ? Math.round(appliedRows.reduce((s,r)=>s+(r.delay||0),0)/appliedRows.length) : null;
+  const noActionCount = rows.filter(r=>r.status==='nokd' || r.status==='notang').length;
+  const totalKm = evs.reduce((s,e)=>s+(e.totalKm||0),0); // tổng KM của TẤT CẢ đợt trong phạm vi
+  const prodSet = new Set(); evs.forEach(e=>e.prodNames.forEach(n=>prodSet.add(n)));
+
+  return {
+    agg:true, id:'__AGG__',
+    name:'Hiện trạng tổng hợp — ' + (scope || 'MT + GT'),
+    kenh: scope || 'ALL', anchorDate: evs[0].anchorDate,
+    pct:null, prodNames:[...prodSet],
+    rows, avgDelay, totalKm,
+    doneCount: appliedRows.length, totalCust: rows.length,
+    noActionCount, needCount: rows.length - noActionCount,
+    evCount: evs.length,
+  };
 }
 function renderPriceInc(){
   const id = document.getElementById('pi-event').value;
-  const ev = MODEL.priceIncModel[id];
+  let ev;
+  if(id==='__ALL_MT__')      ev = buildAggInc('MT');
+  else if(id==='__ALL_GT__') ev = buildAggInc('GT');
+  else if(id==='__ALL__')    ev = buildAggInc(null);
+  else                       ev = MODEL.priceIncModel[id];
   if(!ev){ document.getElementById('pi-content').innerHTML=emptyState('Không có dữ liệu'); document.getElementById('pi-kpi').innerHTML=''; return; }
 
+  const isAgg  = !!ev.agg;
+  const showKm = ev.kenh!=='GT'; // MT hoặc tổng hợp có MT
+
   document.getElementById('pi-kpi').innerHTML = [
-    kpi('Tiến độ áp giá', `${ev.doneCount}/${ev.totalCust}`, '', ev.doneCount===ev.totalCust?'green':'amber', 'Khách đã áp giá mới'),
-    kpi('Delay trung bình', ev.avgDelay!==null?ev.avgDelay:'—', ev.avgDelay!==null?' ngày':'', delayClass(ev.avgDelay)==='rose'?'rose':delayClass(ev.avgDelay)==='amber'?'amber':'green', `Mốc chuẩn ${ev.anchorDate||'—'}`),
-    ev.kenh==='MT' ? kpi('Tổng chi phí KM', fmtVnd(ev.totalKm), ' đ', 'blue', 'Để đẩy chain áp giá') : kpi('% tăng giá', fmtPct(ev.pct,0), '', 'blue', ev.prodNames.length+' SKU trong đợt'),
-    kpi('SKU trong đợt', ev.prodNames.length, '', 'navy', ev.prodNames.slice(0,2).join(', ')+(ev.prodNames.length>2?'…':'')),
+    kpi('Tiến độ áp giá', `${ev.doneCount}/${ev.needCount}`, '',
+      ev.needCount>0 && ev.doneCount===ev.needCount ? 'green':'amber',
+      'Khách cần áp giá' + (ev.noActionCount ? ` · ${ev.noActionCount} không tăng/chưa KD` : '')),
+    kpi('Delay trung bình', ev.avgDelay!==null?ev.avgDelay:'—', ev.avgDelay!==null?' ngày':'', delayClass(ev.avgDelay)==='rose'?'rose':delayClass(ev.avgDelay)==='amber'?'amber':'green', isAgg?`Trên ${ev.evCount} đợt`:`Mốc chuẩn ${ev.anchorDate||'—'}`),
+    showKm ? kpi('Tổng chi phí KM', fmtVnd(ev.totalKm), ' đ', 'blue', isAgg?'Cộng dồn các đợt MT':'Để đẩy chain áp giá') : kpi('% tăng giá', fmtPct(ev.pct,0), '', 'blue', ev.prodNames.length+' SKU trong đợt'),
+    kpi(isAgg?'SKU liên quan':'SKU trong đợt', ev.prodNames.length, '', 'navy', ev.prodNames.slice(0,2).join(', ')+(ev.prodNames.length>2?'…':'')),
   ].join('');
 
-  let html = `<div class="card"><div class="card-head"><h3>${ev.name}</h3><span class="sub">${ev.kenh} · áp dụng từ ${ev.anchorDate||'—'}</span></div>
+  let html = `<div class="card"><div class="card-head"><h3>${ev.name}</h3><span class="sub">${isAgg?`${ev.evCount} đợt · trạng thái mới nhất mỗi khách`:`${ev.kenh} · áp dụng từ ${ev.anchorDate||'—'}`}</span></div>
     <div class="card-body flush"><div class="tbl-scroll"><table class="dt"><thead><tr>
-    <th>Khách hàng</th><th class="ctr">Trạng thái</th><th class="ctr">Ngày áp giá</th><th class="ctr">Delay</th><th class="ctr">Pass-through</th>
-    ${ev.kenh==='MT'?'<th class="num">Chi phí KM</th>':''}</tr></thead><tbody>`;
-  // sort: chưa xong lên trước
-  const stRank={notstarted:0, inprogress:1, applied:2};
+    <th>Khách hàng</th>${isAgg?'<th>Đợt gần nhất</th>':''}<th class="ctr">Trạng thái</th><th class="ctr">Ngày áp giá</th><th class="ctr">Delay</th><th class="ctr">Pass-through</th>
+    ${showKm?'<th class="num">Chi phí KM</th>':''}</tr></thead><tbody>`;
+  // sort: chưa xong lên trước → đang xử lý → không tăng → chưa KD → đã áp giá
+  const stRank={notstarted:0, inprogress:1, notang:2, nokd:3, applied:4};
   ev.rows.slice().sort((a,b)=>stRank[a.status]-stRank[b.status] || (b.delay||0)-(a.delay||0)).forEach(r=>{
-    const stPill = r.status==='applied'?'<span class="pill green">✓ Đã áp giá</span>'
-                 : r.status==='inprogress'?'<span class="pill amber">⏳ Đang xử lý</span>'
+    const stPill = r.status==='applied' ? '<span class="pill green">✓ Đã áp giá</span>'
+                 : r.status==='inprogress' ? '<span class="pill amber">⏳ Đang xử lý</span>'
+                 : r.status==='notang' ? `<span class="pill blue" title="${r.ktCount} mã đang KD xác nhận không tăng giá${r.ckdCount?` · ${r.ckdCount} mã chưa KD/đã ngưng`:''}">⚪ Không tăng giá</span>`
+                 : r.status==='nokd' ? `<span class="pill gray" title="Toàn bộ ${r.ckdCount} mã đều Chưa KD / Đã ngưng tại khách này">🚫 Chưa KD</span>`
                  : '<span class="pill gray">○ Chưa bắt đầu</span>';
     const dateCell = r.applyDate
       ? (r.approx
@@ -1276,11 +1341,12 @@ function renderPriceInc(){
     const extraNote = r.extraSku ? ` <span style="font-size:10px;color:var(--muted)" title="${r.extraSku} SKU sales nhập nằm ngoài danh sách Price_Events của đợt này">(+${r.extraSku} SKU ngoài đợt)</span>` : '';
     html += `<tr>
       <td class="strong">${r.cust}${extraNote}</td>
+      ${isAgg?`<td style="font-size:11px;color:var(--muted)">${r.evName||'—'}</td>`:''}
       <td class="ctr">${stPill}</td>
       <td class="ctr" style="font-family:var(--mono);font-size:11px">${dateCell}</td>
       <td class="ctr">${r.delay!==null?`<span class="mcell ${delayClass(r.delay)}" ${r.approx?'title="Delay ước tính theo ngày nhập app"':''}>${r.approx?'≈':''}${r.delay}d</span>`:'<span class="mcell gray">—</span>'}</td>
       <td class="ctr">${r.passThrough!==null?fmtPct(r.passThrough,0):'<span style="color:var(--muted-2)">—</span>'}</td>
-      ${ev.kenh==='MT'?`<td class="num">${r.kmTotal?fmtVnd(r.kmTotal):'<span style="color:var(--muted-2)">0</span>'}</td>`:''}
+      ${showKm?`<td class="num">${r.kmTotal?fmtVnd(r.kmTotal):'<span style="color:var(--muted-2)">0</span>'}</td>`:''}
     </tr>`;
   });
   html += `</tbody></table></div></div></div>`;
