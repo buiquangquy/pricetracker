@@ -596,20 +596,16 @@ input[type=file] { display: none; }
         <div id="comp-fields" style="display:none;">
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div>
+              <div class="field-label">Thương hiệu <span class="req">*</span></div>
+              <input type="text" id="f-comp-brand" placeholder="Vd: Cirio, Dongwon, Sailer Wheel...">
+            </div>
+            <div>
               <div class="field-label">Tên sản phẩm <span class="req">*</span></div>
               <input type="text" id="f-comp-name" placeholder="Vd: Đậu sốt, Cá thu, Cháo..." oninput="_onCompNameInput()">
             </div>
             <div>
               <div class="field-label">Hương vị / Loại sốt <span style="font-size:10px;color:#9ca3af;">(ghép vào tên SP khi lưu)</span></div>
               <input type="text" id="f-comp-flavour" placeholder="Vd: Cà chua, Cà ri, Tương đen, Dầu ô liu..." oninput="_onCompNameInput()">
-            </div>
-            <div>
-              <div class="field-label">Loại sản phẩm</div>
-              <input type="text" id="f-comp-type" placeholder="Vd: Cá hộp, đậu hũ, sốt...">
-            </div>
-            <div>
-              <div class="field-label">Thương hiệu <span class="req">*</span></div>
-              <input type="text" id="f-comp-brand" placeholder="Vd: Cirio, Dongwon, Sailer Wheel...">
             </div>
             <div class="info-row">
               <div>
@@ -627,12 +623,20 @@ input[type=file] { display: none; }
               </div>
             </div>
             <div>
-              <div class="field-label">NSX / Nhà phân phối VN</div>
-              <input type="text" id="f-comp-mfg" placeholder="Tên công ty sản xuất">
+              <div class="field-label">Nhà PP tại VN</div>
+              <input type="text" id="f-distrib" placeholder="Tên công ty phân phối tại VN">
+            </div>
+            <div>
+              <div class="field-label">Nhà máy SX</div>
+              <input type="text" id="f-comp-mfg" placeholder="Tên nhà máy sản xuất">
             </div>
             <div>
               <div class="field-label">Xuất xứ</div>
               <input type="text" id="f-comp-origin" placeholder="Vd: Thái Lan, Việt Nam, Hàn Quốc">
+            </div>
+            <div>
+              <div class="field-label">Loại sản phẩm</div>
+              <input type="text" id="f-comp-type" placeholder="Vd: Cá hộp, đậu hũ, sốt...">
             </div>
           </div>
         </div>
@@ -641,19 +645,16 @@ input[type=file] { display: none; }
 
     <!-- Giá / NIP / Ảnh — chỉ hiện cho đối thủ; own brand dùng bulk card riêng -->
     <div id="comp-only-sections">
-    <!-- Giá -->    <div class="section-card">
-      <div class="section-title">💰 Giá survey (đã bao gồm VAT)</div>
+    <!-- Giá NTD -->    <div class="section-card">
+      <div class="section-title">💰 Giá NTD (đã bao gồm VAT)</div>
       <div class="section-body">
-        <div>
-          <div class="field-label">Loại giá <span class="req">*</span></div>
-          <select id="f-price-type">
-            <option value="Giá NTD">🧑‍🛒 Giá NTD — giá bán lẻ tại kệ</option>
-            <option value="Giá đại lý">🚛 Giá đại lý</option>
-          </select>
-        </div>
         <div class="price-row">
           <div>
-            <div class="field-label">Đơn vị tính giá <span class="req">*</span></div>
+            <div class="field-label">Giá NTD (đồng) <span class="req">*</span></div>
+            <input type="number" id="f-price" placeholder="0" min="0">
+          </div>
+          <div>
+            <div class="field-label">Đơn vị tính <span class="req">*</span></div>
             <select id="f-price-unit">
               <option value="lon">lon</option>
               <option value="chai">chai</option>
@@ -662,27 +663,13 @@ input[type=file] { display: none; }
               <option value="hộp">hộp</option>
             </select>
           </div>
-          <div>
-            <div class="field-label">Giá (đồng) <span class="req">*</span></div>
-            <input type="number" id="f-price" placeholder="0" min="0">
-          </div>
-        </div>
-        <div class="info-row">
-          <div>
-            <div class="field-label">Vị trí kệ</div>
-            <input type="text" id="f-shelf" placeholder="Vd: Eye-level, shelf 2">
-          </div>
-          <div>
-            <div class="field-label">Facing</div>
-            <input type="number" id="f-facing" placeholder="Số lon/gói" min="0">
-          </div>
         </div>
       </div>
     </div>
 
-    <!-- Thông tin bổ sung -->
+    <!-- Hạn dùng & Sản xuất -->
     <div class="section-card">
-      <div class="section-title">🏷️ Thông tin bổ sung (tuỳ chọn)</div>
+      <div class="section-title">📅 Hạn dùng & Sản xuất</div>
       <div class="section-body">
         <div class="info-row">
           <div>
@@ -694,25 +681,21 @@ input[type=file] { display: none; }
             <input type="text" id="f-mfgdate" placeholder="Vd: 01/2025">
           </div>
         </div>
-        <div>
-          <div class="field-label">Nhà phân phối tại VN</div>
-          <input type="text" id="f-distrib" placeholder="Tên công ty">
-        </div>
       </div>
     </div>
 
     <!-- NIP -->
     <div class="section-card" id="nip-section">
-      <div class="section-title">🔬 Thông tin dinh dưỡng (NIP)</div>
+      <div class="section-title">🔬 Thông tin dinh dưỡng (NIP) — tuỳ chọn</div>
       <div class="section-body">
-        <div class="nip-hint">📌 NĐ 43/2017 & TT 05/2019 — bắt buộc với sản phẩm đối thủ để phân tích</div>
+        <div class="nip-hint">📌 Không bắt buộc — điền nếu có thời gian, để phân tích dinh dưỡng (NĐ 43/2017 & TT 05/2019)</div>
         <div class="nip-grid">
-          <div class="nip-field"><div class="fl">Năng lượng (kcal) <span style="color:var(--red)">*</span></div><input type="number" id="nip-kcal" placeholder="0"></div>
-          <div class="nip-field"><div class="fl">Protein (g) <span style="color:var(--red)">*</span></div><input type="number" id="nip-protein" placeholder="0"></div>
-          <div class="nip-field"><div class="fl">Chất béo (g) <span style="color:var(--red)">*</span></div><input type="number" id="nip-fat" placeholder="0"></div>
-          <div class="nip-field"><div class="fl">Carbohydrate (g) <span style="color:var(--red)">*</span></div><input type="number" id="nip-carb" placeholder="0"></div>
-          <div class="nip-field"><div class="fl">Đường (g) <span style="color:var(--red)">*</span></div><input type="number" id="nip-sugar" placeholder="0"></div>
-          <div class="nip-field"><div class="fl">Natri (mg) <span style="color:var(--red)">*</span></div><input type="number" id="nip-sodium" placeholder="0"></div>
+          <div class="nip-field"><div class="fl">Năng lượng (kcal)</div><input type="number" id="nip-kcal" placeholder="0"></div>
+          <div class="nip-field"><div class="fl">Protein (g)</div><input type="number" id="nip-protein" placeholder="0"></div>
+          <div class="nip-field"><div class="fl">Chất béo (g)</div><input type="number" id="nip-fat" placeholder="0"></div>
+          <div class="nip-field"><div class="fl">Carbohydrate (g)</div><input type="number" id="nip-carb" placeholder="0"></div>
+          <div class="nip-field"><div class="fl">Đường (g)</div><input type="number" id="nip-sugar" placeholder="0"></div>
+          <div class="nip-field"><div class="fl">Natri (mg)</div><input type="number" id="nip-sodium" placeholder="0"></div>
         </div>
         <div style="font-size:12px;color:var(--gray);font-weight:600;margin-top:4px;">Tuỳ chọn:</div>
         <div class="nip-grid">
@@ -1673,18 +1656,7 @@ function _setPhotoNIPRequired(required) {
     }
     slotEl.classList.toggle('required', required);
   });
-  // NIP fields — chỉ áp dụng cho competitor (own brand NIP không bắt buộc từ đầu)
-  if (state.productType === 'comp') {
-    const nipReqSpans = document.querySelectorAll('#nip-section .nip-field span[style*="color:var(--red)"]');
-    nipReqSpans.forEach(sp => { sp.style.display = required ? '' : 'none'; });
-    const nipSection = document.getElementById('nip-section');
-    if (nipSection) {
-      const title = nipSection.querySelector('.section-title');
-      if (title) title.textContent = required
-        ? '🔬 Thông tin dinh dưỡng (NIP)'
-        : '🔬 Thông tin dinh dưỡng (NIP) — tuỳ chọn';
-    }
-  }
+  // NIP luôn tuỳ chọn — không đổi trạng thái required (chỉ ảnh mới bắt buộc)
   // Progress label update
   updatePhotoProgress();
 }
@@ -1851,11 +1823,11 @@ function buildCompPayload(baseFields) {
     bao_bi:             '',
     nsx_nha_phan_phoi:  document.getElementById('f-comp-mfg').value.trim(),
     xuat_xu:            document.getElementById('f-comp-origin').value.trim(),
-    loai_gia:           document.getElementById('f-price-type').value,
+    loai_gia:           'Giá NTD',
     don_vi_tinh_gia:    document.getElementById('f-price-unit').value,
     gia:                document.getElementById('f-price').value,
-    vi_tri_ke:          document.getElementById('f-shelf').value,
-    facing:             document.getElementById('f-facing').value,
+    vi_tri_ke:          '',
+    facing:             '',
     phuong_thuc_nhap:   'manual',
     han_su_dung:        document.getElementById('f-exp').value,
     ngay_sx:            document.getElementById('f-mfgdate').value,
